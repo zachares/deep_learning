@@ -26,10 +26,14 @@ class Proto_Metric(object):
 	def measure(self, input_tuple, logging_dict, label, args_tuple = None):
 		net_est, target = input_tuple
 
-		measurements = tuple(self.metric(net_est, target))
+		measurements = self.metric(net_est, target)
 
 		for i, metric_name in enumerate(self.metric_names):
-			measurement = measurements[i]
+			if type(measurements) == tuple:
+				measurement = measurements[i]
+			else:
+				measurement = measurements
+
 			logging_dict['scalar'][label + "/" + metric_name] = measurement.mean().item()
 
 class Proto_Loss(object):
