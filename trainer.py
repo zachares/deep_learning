@@ -71,6 +71,7 @@ class Trainer(object):
 		self.eval_dict["Multinomial_Entropy"] = Proto_Metric(multinomial.logits2ent_metric, ["entropy", "correxample_entropy", "incorrexample_entropy"])
 		self.eval_dict["Gaussian_Error_Distrb"] = Proto_Metric(gaussian.params2error_metric, ["average_error", "covariance_error_Ratio"])
 		self.eval_dict["Gaussian_Error_Samples"] = Proto_Metric(gaussian.samples2error_metric, ["average_error", "covariance_error_Ratio"])
+		self.eval_dict["Continuous_Error"] = Proto_Metric(utils.continuous2error_metric, ["average_accuracy", "average_error_mag"])
 		####################################
 		##### Training Results Dictionary for logger #############
 		##########################################

@@ -85,7 +85,7 @@ def init_dataloader(cfg, device, idx_dict_path = None):
     else:
         idx_dict = None
 
-    dataset = H5_DataLoader(cfg, idx_dict = idx_dict, device = device, transform=transforms.Compose([ToTensor(device = device)]))
+    dataset = Custom_DataLoader(cfg, idx_dict = idx_dict, device = device, transform=transforms.Compose([ToTensor(device = device)]))
 
     if val_ratio == 0:
         print("No validation set")

@@ -2,6 +2,28 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import copy
+import h5py
+
+def read_h5(path):
+    return h5py.File(path, 'r', swmr=True, libver = 'latest')
+
+def continuous2error_metric(preds, labels):
+    num_size_dims = len(list(preds.size()))
+
+    errors = labels - preds
+
+    if num_size_dims == 1 or num_size_dims == 2:
+        if num_size_dims == 1:
+            errors_norm = torch.abs(errors)
+            labels_norm = torch.abs(labels)
+        else:
+            errors_norm = errors.norm(p=2, dim =1)
+            labels_norm = labels.norm(p=2, dim = 1)
+
+        accuracy = torch.where(torch.abs(errors_norm - labels_norm) < labels_norm, errors_norm / labels_norm, torch.zeros_like(errors_norm))
+        return accuracy, errors_norm
+    else:
+        raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
 
 def histogram_loss(est, target, loss_function, hyperparameter):
     errors = loss_function(net_est, target).sum(1)   
