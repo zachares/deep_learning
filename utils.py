@@ -73,26 +73,6 @@ def ranking_loss(values, targets):
 def simple_normalization(vector, dim = 1):
     return vector / vector.norm(p=2, dim = dim).unsqueeze(dim).repeat_interleave(vector.size(dim), dim = dim)
 
-def log_normal(x, m, v):
-    return -0.5 * ((x - m).pow(2)/ v + torch.log(2 * np.pi * v)).sum(-1)
-
-def filter_depth(depth_image):
-    depth_image = torch.where( depth_image > 1e-7, depth_image, torch.zeros_like(depth_image))
-    return torch.where( depth_image < 2, depth_image, torch.zeros_like(depth_image))
-
-def T_angle(angle):
-    TWO_PI = 2 * np.pi
-    ones = torch.ones_like(angle)
-    zeros = torch.zeros_like(angle)
-
-    case1 = torch.where(angle < -TWO_PI, angle + TWO_PI * ((torch.abs(angle) / TWO_PI).floor() + 1), zeros )
-    case2 = torch.where(angle > TWO_PI, angle - TWO_PI * (angle / TWO_PI).floor(), zeros)
-    case3 = torch.where(angle > -TWO_PI, ones, zeros) * torch.where(angle < 0, TWO_PI + angle, zeros)
-    case4 = torch.where(angle < TWO_PI, ones, zeros) * torch.where(angle > 0, angle, zeros)
-
-    return case1 + case2 + case3 + case4
-
-
 def get_2Dconv_params(input_size, output_size):
 
     input_chan, input_height, input_width = input_size

@@ -151,7 +151,7 @@ class Trainer(object):
 
 					loss_function = self.loss_dict[self.info_flow[model_key]['outputs'][output_key]['loss']]
 					loss_name = self.info_flow[model_key]["outputs"][output_key]["loss_name"]
-					eval_dict = self.info_flow[model_key]["outputs"][output_key]["evals"]
+
 
 					if loss_bool == False:
 						loss = loss_function.loss(tuple(input_list), self.logging_dict, self.info_flow[model_key]['outputs'][output_key]['weight'], model_key + "/" + loss_name)
@@ -159,9 +159,11 @@ class Trainer(object):
 					else:
 						loss += loss_function.loss(tuple(input_list), self.logging_dict, self.info_flow[model_key]['outputs'][output_key]['weight'], model_key + "/" + loss_name)
 
-					for metric in eval_dict.keys():
-						eval_function = self.eval_dict[metric]
-						eval_function.measure(tuple(input_list), self.logging_dict, model_key + "/" + loss_name)
+					if "evals" in self.info_flow[model_key]["outputs"][output_key].keys():
+						eval_dict = self.info_flow[model_key]["outputs"][output_key]["evals"]
+						for metric in eval_dict.keys():
+							eval_function = self.eval_dict[metric]
+							eval_function.measure(tuple(input_list), self.logging_dict, model_key + "/" + loss_name)
 
 		return loss
 
