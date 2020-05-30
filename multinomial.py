@@ -2,92 +2,64 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-def logits2KL(logits0, logits1):
-    num_size_dims = len(list(logits0.size()))
+### Does not support binomial distributions represented by a single parameter
 
-    if num_size_dims == 1:
-        probs0 = torch.sigmoid(logits_0)
-        probs1 = torch.sigmoid(logits_1)
-        return probs0 * (torch.log(probs0) - torch.log(probs1)) + (1 - probs1) * (torch.log(1 - probs0) - torch.log(1 - probs1))
-    elif num_size_dims == 2:
-        return -(F.softmax(logits1, dim =1) * (F.log_softmax(logits0, dim = 1) - F.log_softmax(logits1, dim = 1))).sum(1)
+EPS = 1e-6
+
+def logits2inputs(logits):
+    num_size_dims = len(list(logits.size()))
+
+    if num_size_dims == 2:
+        probs = F.softmax(logits, dim = 1)
+        logprobs = F.log_softmax(logits, dim = 1)
     else:
         raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
 
-def probs2KL(probs0, probs1):
-    num_size_dims = len(list(probs0.size()))
+    return torch.cat([probs.unsqueeze(0), logprobs.unsqueeze(0)], dim = 0)
 
-    if num_size_dims == 1:
-        return probs0 * (torch.log(probs0) - torch.log(probs1)) + (1 - probs1) * (torch.log(1 - probs0) - torch.log(1 - probs1))
-    elif num_size_dims == 2:
-        return -(probs1 * (torch.log(probs0) - torch.log(probs1))).sum(1)
+def probs2inputs(probs):
+    num_size_dims = len(list(probs.size()))
+
+    if num_size_dims == 2:
+        logprobs = torch.log(probs)
     else:
         raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
+
+    return torch.cat([probs.unsqueeze(0), logprobs.unsqueeze(0)], dim = 0)
 
 def logits2probs(logits):
     num_size_dims = len(list(logits.size()))
 
-    if  num_size_dims == 1:
-        probs = torch.sigmoid(logits)
-    elif num_size_dims == 2:
+    if num_size_dims == 2:
         probs = F.softmax(logits, dim = 1)
+        probs = torch.where(probs !=0, probs, EPS * torch.ones_like(probs))
+        probs = probs / probs.sum(1).unsqueeze(1).repeat_interleave(probs.size(1), dim = 1)
+        return probs
     else:
         raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
 
-    return probs
+def inputs2KL(inputs0, inputs1):
+    probs0, logprobs0 = inputs0[0], inputs0[1]
+    probs1, logprobs1 = inputs1[0], inputs1[1]
 
-def probs2ent(probs): # from a binomial or multinomial distribution
-    num_size_dims = len(list(probs.size()))
+    nonzero0 = torch.where(probs0 != 0, torch.ones_like(probs0), torch.zeros_like(probs0))
+    nonzero1 = torch.where(probs1 != 0, torch.ones_like(probs1), torch.zeros_like(probs1))
 
-    if  num_size_dims == 1:
-        return  -torch.log(probs) * probs - torch.log(1-probs) * (1 - probs)
-    elif num_size_dims == 2:
-        return torch.where(probs != 0, -1.0 * probs * torch.log(probs), torch.zeros_like(probs)).sum(-1)
-    else:
-        raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
+    return torch.where((nonzero0 * nonzero1) != 0, -probs1 * (logprobs0 - logprobs1), torch.zeros_like(probs1)).sum(-1)
 
-def logits2ent(logits): # from a binomial or multinomial distribution
-    num_size_dims = len(list(logits.size()))
+def inputs2ent(inputs): # from a multinomial distribution
+    probs, logprobs = inputs[0], inputs[1]
+    return torch.where(probs != 0, -1.0 * probs * torch.log(probs), -EPS * np.log(EPS) * torch.ones_like(probs)).sum(-1)
 
-    if  num_size_dims == 1:
-        probs = torch.sigmoid(logits)
-        return  -torch.log(probs) * probs - torch.log(1-probs) * (1 - probs)
-    elif num_size_dims == 2:
-        probs = F.softmax(logits, dim = 1)
-        return torch.where(probs != 0, -1.0 * probs * F.log_softmax(logits, dim = 1), torch.zeros_like(probs)).sum(-1)
-    else:
-        raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
+def inputs2acc(inputs, labels):
+    probs, logprobs = inputs[0], inputs[1]
+    est_idx = probs.max(1)[1]
 
-def logits2acc(logits, label):
-    num_size_dims = len(list(logits.size()))
-
-    if  num_size_dims == 1:
-        probs = torch.sigmoid(logits)
-        est_idx = torch.where(probs > 0.5, torch.ones_like(probs), torch.zeros_like(probs))
-    elif num_size_dims == 2:
-        probs = F.softmax(logits, dim = 1)
-        est_idx = probs.max(1)[1]
-    else:
-        raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
-
-    return torch.where(label == est_idx, torch.ones_like(label), torch.zeros_like(label)).float()
-
-def probs2acc(probs, label):
-    num_size_dims = len(list(probs.size()))
-
-    if  num_size_dims == 1:
-        est_idx = torch.where(probs > 0.5, torch.ones_like(probs), torch.zeros_like(probs))
-        label_idx = label.clone()
-    elif num_size_dims == 2:
-        est_idx = est.max(1)[1]
-    else:
-        raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
-
-    return torch.where(label == est_idx, torch.ones_like(label), torch.zeros_like(label))
-
-def logits2ent_metric(logits, label):
-    accuracy = logits2acc(logits, label)
-    entropy = logits2ent(logits)
+    return torch.where(labels == est_idx, torch.ones_like(labels), torch.zeros_like(labels)).float()
+    
+def inputs2ent_metric(inputs, labels):
+    accuracy = inputs2acc(inputs, labels)
+    entropy = inputs2ent(inputs)
 
     positive_entropy = entropy[accuracy.nonzero()]
     negative_entropy = entropy[(1 - accuracy).nonzero()]

@@ -37,11 +37,32 @@ class Proto_Metric(object):
 
 			logging_dict['scalar'][label + "/" + metric_name] = measurement.mean().item()
 
+class Proto_Metric_Ensemble(object):	
+	def __init__(self, metric_function, metric_names):
+		self.metric = metric_function
+		self.metric_names = tuple(metric_names)
+
+	def measure(self, input_tuple, logging_dict, label, args_tuple = None):
+		net_ests, target = input_tuple
+
+		for i in range(net_ests.size(0)):
+			net_est = net_ests[i]
+
+			measurements = self.metric(net_est, target)
+
+			for j, metric_name in enumerate(self.metric_names):
+				if type(measurements) == tuple:
+					measurement = measurements[j]
+				else:
+					measurement = measurements
+
+				logging_dict['scalar'][label + "/" + metric_name + "_" + str(i)] = measurement.mean().item()
+
 class Proto_Loss(object):
 	def __init__(self, loss_function):
 		self.loss_function = loss_function
 
-	def loss(self, input_tuple, logging_dict, weight, label, args_tuple = None):
+	def forward(self, input_tuple, logging_dict, weight, label, args_tuple = None):
 		net_est, target = input_tuple
 
 		loss = weight * self.loss_function(net_est, target).mean()
@@ -50,21 +71,20 @@ class Proto_Loss(object):
 
 		return loss
 
-class Proto_MultiStep_Loss(object):
+class Proto_Loss_Ensemble(object):
 	def __init__(self, loss_function):
 		self.loss_function = loss_function
 
-	def loss(self, input_tuple, logging_dict, weight, label, args_tuple = None):
-		net_ests, targets = input_tuple[0]
+	def forward(self, input_tuple, logging_dict, weight, label, args_tuple = None):
+		net_ests, target = input_tuple
 		loss = torch.zeros(1).float().to(net_ests.device)
 
-		for i in range(net_est.size(0)):
+		for i in range(net_ests.size(0)):
 			net_est = net_ests[i]
-			target_est = targets[i]
 
 			loss += weight * self.loss_function(net_est, target).mean()
 
-		logging_dict['scalar'][label + "/loss"] = loss.item() / net_est.size(0)
+		logging_dict['scalar'][label + "/loss"] = loss.item() / net_ests.size(0)
 
 		return loss
 

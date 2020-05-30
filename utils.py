@@ -20,7 +20,7 @@ def continuous2error_metric(preds, labels):
             errors_norm = errors.norm(p=2, dim =1)
             labels_norm = labels.norm(p=2, dim = 1)
 
-        accuracy = torch.where(torch.abs(errors_norm - labels_norm) < labels_norm, errors_norm / labels_norm, torch.zeros_like(errors_norm))
+        accuracy = torch.where(torch.abs(errors_norm - labels_norm) < labels_norm, errors_norm / labels_norm, torch.ones_like(errors_norm))
         return accuracy, errors_norm
     else:
         raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))

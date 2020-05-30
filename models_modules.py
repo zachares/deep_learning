@@ -26,18 +26,93 @@ feature for Training on multiple GPUs
 # Params class for learning specific parameters
 #########################################
 class Params_module(nn.Module):
-    def __init__(self, size, init_values = None):
+    def __init__(self, size):
         super().__init__()
         self.size = size
-        self.init_values = init_values
         self.p = nn.Parameter(nn.init.uniform_(torch.empty(size)))
     def forward(self):
         return self.p
 
 class Flatten(nn.Module):
-    def forward(self, input):
-        return input.view(input.size(0), -1)
+    def forward(self, inputs):
+        return inputs.view(input.size(0), -1)
 
+
+class TransformerDecoderLayer_Modified(nn.Module):
+    '''TransformerDecoderLayer is made up of self-attn, multi-head-attn and feedforward network.
+    This standard decoder layer is based on the paper "Attention Is All You Need".
+    Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez,
+    Lukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. In Advances in
+    Neural Information Processing Systems, pages 6000-6010. Users may modify or implement
+    in a different way during application.
+    Args:
+        d_model: the number of expected features in the input (required).
+        nhead: the number of heads in the multiheadattention models (required).
+        dim_feedforward: the dimension of the feedforward network model (default=2048).
+        dropout: the dropout value (default=0.1).
+        activation: the activation function of intermediate layer, relu or gelu (default=relu).
+    Examples::
+        >>> decoder_layer = nn.TransformerDecoderLayer(d_model=512, nhead=8)
+        >>> memory = torch.rand(10, 32, 512)
+        >>> tgt = torch.rand(20, 32, 512)
+        >>> out = decoder_layer(tgt, memory)
+    '''
+
+    def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1, uc = True):
+        super().__init__()
+        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        # Implementation of Feedforward model
+        self.linear1 = nn.Linear(d_model, dim_feedforward)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(dim_feedforward, d_model)
+
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.norm3 = nn.LayerNorm(d_model)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+        self.dropout3 = nn.Dropout(dropout)
+
+        self.activation = nn.ReLU()
+
+        self.uc = uc
+
+    def forward(self, tgt, memory, tgt_mask=None, memory_mask=None,
+                tgt_key_padding_mask=None, memory_key_padding_mask=None):
+        # type: (Tensor, Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor], Optional[Tensor]) -> Tensor
+        r"""Pass the inputs (and mask) through the decoder layer.
+        Args:
+            tgt: the sequence to the decoder layer (required).
+            memory: the sequence from the last layer of the encoder (required).
+            tgt_mask: the mask for the tgt sequence (optional).
+            memory_mask: the mask for the memory sequence (optional).
+            tgt_key_padding_mask: the mask for the tgt keys per batch (optional).
+            memory_key_padding_mask: the mask for the memory keys per batch (optional).
+        Shape:
+            see the docs in Transformer class.
+        """
+        if self.uc:
+            self.dropout1.train()
+            self.dropout2.train()
+            self.dropout3.train()
+            self.self_attn.train()
+            self.multihead_attn.train()
+
+        tgt2 = self.self_attn(tgt, tgt, tgt, attn_mask=tgt_mask,
+                              key_padding_mask=tgt_key_padding_mask)[0]
+        tgt = tgt + self.dropout1(tgt2)
+        tgt = self.norm1(tgt)
+        tgt2 = self.multihead_attn(tgt, memory, memory, attn_mask=memory_mask,
+                                   key_padding_mask=memory_key_padding_mask)[0]
+        tgt = tgt + self.dropout2(tgt2)
+
+        tgt = self.norm2(tgt)
+        tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt))))
+
+        tgt = tgt + self.dropout3(tgt2)
+        tgt = self.norm3(tgt)
+        return tgt
 #########################################
 # Current Model Types Supported 
 ########################################
@@ -56,14 +131,13 @@ All models have four other methods
 class Proto_Model(nn.Module):
     def __init__(self, save_name, load_name, device):
         super().__init__()
-        self.model = None
         self.save_name = save_name
         self.load_name = load_name
         self.device = device
-        self.parallel = False
+        # self.parallel = False
 
-    def forward(self, input):
-        return self.model(input)
+    def forward(self, inputs):
+        return self.model(inputs)
 
     def weight_parameters(self):
         return [param for name, param in self.named_parameters() if 'weight' in name]
@@ -89,15 +163,12 @@ class Proto_Model(nn.Module):
     #     self.parallel = parallel_bool
 
 class Params(Proto_Model):
-    def __init__(self, save_name, load_name, size, device= None, init_values = None): #dim=20, K=16):
+    def __init__(self, save_name, load_name, size, device= None):
         super().__init__(save_name + "_params", load_name + "_params", device = device)
 
         self.device = device
         self.size = size
-        self.init_values = init_values
-
-        layer_list = []
-        self.model = Params_module(self.size, self.init_values)
+        self.model = Params_module(self.size)
 
     def forward(self):
         return self.model()
@@ -105,62 +176,48 @@ class Params(Proto_Model):
     #     pass
 
 class CONV2DN(Proto_Model):
-    def __init__(self, save_name, load_name, input_size, output_size, output_activation_layer_bool, flatten_bool, num_fc_layers, batchnorm_bool = True, dropout_bool = False, device = None):
-        super().__init__(save_name + "_cnn", load_name + "_cnn", device = device)
-
-        # activation type leaky relu and network uses batch normalization
-        self.device = device
+    def __init__(self, save_name, load_name, input_size, output_size, nonlinear = False,\
+        batchnorm = True, dropout = False, dropout_prob = 0.5, uc = True, device = None):
+        super().__init__(save_name + "_cnn2d", load_name + "_cnn2d", device = device)
 
         self.input_size = input_size
         self.output_size = output_size
-        output_chan, output_height, output_width = output_size
 
-        self.output_activation_layer_bool = output_activation_layer_bool
-        self.flatten_bool = flatten_bool
-        self.num_fc_layers = num_fc_layers
+        self.batchnorm = batchnorm
+        self.nonlinear = nonlinear
+        self.dropout = dropout
+        self.dropout_prob = dropout_prob
+        self.uc = uc
+
+        assert self.dropout != self.batchnorm
 
         #assume that the prime factorization of rows and cols is composed of only powers of 3 and 2
         e_p_list = get_2Dconv_params(input_size, output_size) # encoder parameters
 
         # print(e_p_list)
-
         layer_list = []
+        self.layer_name_list = []
 
-        for idx, e_p in enumerate(e_p_list):
+        for i, e_p in enumerate(e_p_list):
             layer_list.append(nn.Conv2d(e_p[0] , e_p[1], kernel_size=(e_p[2], e_p[3]),\
                 stride=(e_p[4], e_p[5]), padding=(e_p[6], e_p[7]), bias=True))
+            self.layer_name_list.append('conv2d_' + str(i))
 
-            if idx != (len(e_p_list) - 1) and batchnorm_bool:
-                layer_list.append(nn.BatchNorm2d(e_p[1]))
+            if i != (len(e_p_list) - 1) or nonlinear:
+                if dropout:
+                    layer_list.append(nn.Dropout(p=dropout_prob))
+                    self.layer_name_list.append('dropout_' + str(i))
 
-            if idx != (len(e_p_list) - 1) and num_fc_layers == 0 and output_activation_layer_bool == False:
-                continue         
+                if batchnorm:
+                    layer_list.append(nn.BatchNorm2d(e_p[1]))
+                    self.layer_name_list.append('batchnorm2d_' + str(i))
 
-            layer_list.append(nn.LeakyReLU(0.1, inplace = True))
-            
-            if dropout_bool:
-                layer_list.append(nn.Dropout2d())
+                layer_list.append(nn.LeakyReLU(0.1, inplace = False))
+                self.layer_name_list.append('leaky_relu_' + str(i))
 
-        if flatten_bool or num_fc_layers != 0:
-            layer_list.append(Flatten())
-            num_outputs = output_width * output_height * output_chan
 
-        for idx in range(num_fc_layers):
 
-            layer_list.append(nn.Linear(num_outputs, num_outputs))
-
-            if idx == (num_fc_layers - 1) and output_activation_layer_bool == False:
-                continue
-
-            if batchnorm_bool:
-                layer_list.append(nn.BatchNorm1d(num_outputs))
-
-            layer_list.append(nn.LeakyReLU(0.1, inplace = True))
-
-            if dropout_bool:
-                layer_list.append(nn.Dropout())
-
-        self.model = nn.Sequential(*layer_list)
+        self.model = nn.ModuleList(layer_list)
 
         # -----------------------
         # weight initialization
@@ -174,41 +231,62 @@ class CONV2DN(Proto_Model):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
+    def forward(self, inputs):
+        for i, layer in enumerate(self.model):
+            name = self.layer_name_list[i]
+            if name[:4] == 'drop' and self.uc:
+                layer.train()
+
+            if i == 0:
+                out = layer(inputs)
+            else:
+                out = layer(out)
+
+        return out
+
 #### a 2D deconvolutional network
 class DECONV2DN(Proto_Model):
-    def __init__(self, save_name, load_name, input_size, output_size, output_activation_layer_bool, batchnorm_bool = True, dropout_bool = False, device = None):
-        super().__init__(save_name + "_dcnn", load_name + "_dcnn", device = device)
-
-        # activation type leaky relu and network uses batch normalization
-        self.device = device
+    def __init__(self, save_name, load_name, input_size, output_size, nonlinear=False,\
+     batchnorm = True, dropout = False, dropout_prob = 0.5, uc = False, device = None):
+        super().__init__(save_name + "_dcnn2d", load_name + "_dcnn2d", device = device)
 
         self.input_size = input_size
         self.output_size = output_size
 
-        self.output_activation_layer_bool = output_activation_layer_bool
+        self.batchnorm = batchnorm
+        self.nonlinear = nonlinear
+        self.dropout = dropout
+        self.dropout_prob = dropout_prob
+        self.uc = uc
+
+        assert self.dropout != self.batchnorm
+
         #assume that the prime factorization of rows and cols is composed of only powers of 3 and 2
         e_p_list = get_2Dconv_params(output_size, input_size) # encoder parameters
         e_p_list.reverse()
 
         layer_list = []
+        self.layer_name_list = []
 
-        for idx, e_p in enumerate(e_p_list):
-
+        for i, e_p in enumerate(e_p_list):
             layer_list.append(nn.ConvTranspose2d(e_p[1] , e_p[0], kernel_size=(e_p[2], e_p[3]),\
                 stride=(e_p[4], e_p[5]), padding=(e_p[6], e_p[7]), bias=True))
+            self.layer_name_list.append('deconv2d_' + str(i))
 
-            if idx != (len(e_p_list) - 1) and batchnorm_bool:
-                layer_list.append(nn.BatchNorm2d(e_p[0]))
+            if i != (len(e_p_list) - 1) or nonlinear:
+                if dropout:
+                    layer_list.append(nn.Dropout(p=dropout_prob))
+                    self.layer_name_list.append('dropout_' + str(i))
 
-            if idx != (len(e_p_list) - 1) and output_activation_layer_bool == False:
-                continue         
+                if batchnorm:
+                    layer_list.append(nn.BatchNorm2d(e_p[1]))
+                    self.layer_name_list.append('batchnorm2d_' + str(i))
 
-            layer_list.append(nn.LeakyReLU(0.1, inplace = True))
-            if dropout_bool:
-                layer_list.append(nn.Dropout2d())
+                layer_list.append(nn.LeakyReLU(0.1, inplace = False))
+                self.layer_name_list.append('leaky_relu_' + str(i))
 
-        self.model = nn.Sequential(*layer_list)
 
+        self.model = nn.ModuleList(layer_list)
         # -----------------------
         # weight initialization
         # -----------------------
@@ -221,174 +299,189 @@ class DECONV2DN(Proto_Model):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def forward(self, rep):
-        assert rep.size()[1] == self.input_size[0], "input channel dim does not match network requirements"
-        return self.model(rep.unsqueeze(2).unsqueeze(3).repeat(1,1,2,2))
+    def forward(self, inputs):
+        for i, layer in enumerate(self.model):
+            name = self.layer_name_list[i]
+            if name[:4] == 'drop' and self.uc:
+                layer.train()
+
+            if i == 0:
+                out = layer(inputs)
+            else:
+                out = layer(out)
+
+        return out
 
 #### a time series network
 class CONV1DN(Proto_Model):
-    def __init__(self, save_name, load_name, input_size, output_size, output_activation_layer_bool, flatten_bool, num_fc_layers, batchnorm_bool = True, dropout_bool = False, device = None):
-        super().__init__(save_name + "_1dconv", load_name + "_1dconv", device = device)
+    def __init__(self, save_name, load_name, input_size, output_size, nonlinear = False,\
+        batchnorm = True, dropout = False, dropout_prob = 0.5, uc = False, device = None):
+        super().__init__(save_name + "_cnn1d", load_name + "_cnn1d", device = device)
 
-        # activation type leaky relu and network uses batch normalization
-        self.device = device
         self.input_size = input_size
         self.output_size = output_size
 
-        self.output_activation_layer_bool = output_activation_layer_bool
-        self.flatten_bool = flatten_bool
-        self.num_fc_layers = num_fc_layers
-        output_chan, output_width = self.output_size
+        self.batchnorm = batchnorm
+        self.nonlinear = nonlinear
+        self.dropout = dropout
+        self.dropout_prob = dropout_prob
+        self.uc = uc
 
+        assert self.dropout != self.batchnorm
+
+        # print("Dropout Rate: ", self.dropout_prob)
         #assume that the prime factorization of rows and cols is composed of only powers of 3 and 2
         e_p_list = get_1Dconv_params(input_size, output_size) # encoder parameters
 
-        # print("EP List")
-
-        # print(e_p_list)
-
         layer_list = []
+        self.layer_name_list = []
 
-        for idx, e_p in enumerate(e_p_list):
-
+        for i, e_p in enumerate(e_p_list):
             layer_list.append(nn.Conv1d(e_p[0] , e_p[1], kernel_size= e_p[2],\
                 stride=e_p[3], padding=e_p[4], bias=True))
+            self.layer_name_list.append('conv1d_' + str(i))
 
-            if idx != (len(e_p_list) - 1) and batchnorm_bool:
-                layer_list.append(nn.BatchNorm1d(e_p[1]))
+            if i != (len(e_p_list) - 1) or nonlinear:
+                if dropout:
+                    layer_list.append(nn.Dropout(p=dropout_prob))
+                    self.layer_name_list.append('dropout_' + str(i))
 
-            if idx != (len(e_p_list) - 1) and num_fc_layers == 0 and output_activation_layer_bool == False:
-                continue         
+                if batchnorm:
+                    layer_list.append(nn.BatchNorm1d(e_p[1]))
+                    self.layer_name_list.append('batchnorm1d_' + str(i))
 
-            layer_list.append(nn.LeakyReLU(0.1, inplace = True))
-            if dropout_bool:
-                layer_list.append(nn.Dropout())
+                layer_list.append(nn.LeakyReLU(0.1, inplace = False))
+                self.layer_name_list.append('leaky_relu_' + str(i))
+               
+        self.model = nn.ModuleList(layer_list)
 
-        if flatten_bool or num_fc_layers != 0:
-            layer_list.append(Flatten())
-            num_outputs = output_width * output_chan
+    def forward(self, inputs):
+        for i, layer in enumerate(self.model):
+            name = self.layer_name_list[i]
+            if name[:4] == 'drop' and self.uc:
+                layer.train()
 
-        for idx in range(num_fc_layers):
+            if i == 0:
+                out = layer(inputs)
+            else:
+                out = layer(out)
 
-            layer_list.append(nn.Linear(num_outputs, num_outputs))
-
-            if idx == (num_fc_layers - 1) and output_activation_layer_bool == False:
-                continue
-
-            if batchnorm_bool:
-                layer_list.append(nn.BatchNorm1d(num_outputs))
-            layer_list.append(nn.LeakyReLU(0.1, inplace = True))
-
-            if dropout_bool:
-                layer_list.append(nn.Dropout())                
-
-        self.model = nn.Sequential(*layer_list)
+        return out
 
 #### a 1D deconvolutional network
 class DECONV1DN(Proto_Model):
-    def __init__(self, save_name, load_name, input_size, output_size, output_activation_layer_bool, batchnorm_bool = True, dropout_bool = False, device = None):
-        super().__init__(save_name + "_1ddeconv", load_name + "_1ddeconv", device = device)
-
-        # activation type leaky relu and network uses batch normalization
-        self.device = device
+    def __init__(self, save_name, load_name, input_size, output_size, nonlinear = False,\
+        batchnorm = True, dropout = False, dropout_prob = 0.5, uc = False, device = None):
+        super().__init__(save_name + "_cnn1d", load_name + "_cnn1d", device = device)
 
         self.input_size = input_size
         self.output_size = output_size
 
-        self.output_activation_layer_bool = output_activation_layer_bool
-        self.num_fc_layers = num_fc_layers
+        self.batchnorm = batchnorm
+        self.nonlinear = nonlinear
+        self.dropout = dropout
+        self.dropout_prob = dropout_prob
+        self.uc = uc
 
-        #assume that the prime factorization of rows and cols is composed of only powers of 3 and 2
-        e_p_list = get_1Dconv_params(output_size, input_size) # encoder parameters
+        assert self.dropout != self.batchnorm
+
+        e_p_list = get_1Dconv_params(input_size, output_size) # encoder parameters
         e_p_list.reverse()
 
         layer_list = []
+        self.layer_name_list = []
 
-        for idx, e_p in enumerate(e_p_list):
-
+        for i, e_p in enumerate(e_p_list):
             layer_list.append(nn.ConvTranspose1d(e_p[0] , e_p[1], kernel_size= e_p[2],\
                 stride=e_p[3], padding=e_p[4], bias=True))
+            self.layer_name_list.append('conv1d_' + str(i))
 
-            if idx != (len(e_p_list) - 1) and batchnorm_bool:
-                layer_list.append(nn.BatchNorm1d(e_p[1]))
+            if i != (len(e_p_list) - 1) or nonlinear:
+                if dropout:
+                    layer_list.append(nn.Dropout(p=dropout_prob))
+                    self.layer_name_list.append('dropout1d_' + str(i))
 
-            if idx != (len(e_p_list) - 1) and output_activation_layer_bool == False:
-                continue         
+                if batchnorm:
+                    layer_list.append(nn.BatchNorm1d(e_p[1]))
+                    self.layer_name_list.append('batchnorm1d_' + str(i))
 
-            layer_list.append(nn.LeakyReLU(0.1, inplace = True))
-            if dropout_bool:
-                layer_list.append(nn.Dropout())
+                layer_list.append(nn.LeakyReLU(0.1, inplace = False))
+                self.layer_name_list.append('leaky_relu_' + str(i))
 
-        self.model = nn.Sequential(*layer_list)
+        self.model = nn.ModuleList(layer_list)
 
-    def forward(self, rep):
-        assert rep.size()[1] == self.input_size[0], "input channel dim does not match network requirements"
-        tiled_feat = rep.view(rep.size()[0], rep.size()[1], 1).expand(-1, -1, self.input_size[1])
-        return self.model(tiled_feat)
+    def forward(self, inputs):
+        for i, layer in enumerate(self.model):
+            name = self.layer_name_list[i]
+            if name[:4] == 'drop' and self.uc:
+                layer.train()
+
+            if i == 0:
+                out = layer(inputs)
+            else:
+                out = layer(out)
+
+        return out
 
 #### a fully connected network
 class FCN(Proto_Model):
-    def __init__(self, save_name, load_name, input_channels, output_channels, num_layers, middle_channels_list = [], batchnorm_bool = True, dropout_bool = False,  device = None):
+    def __init__(self, save_name, load_name, input_channels, output_channels, num_layers,
+        nonlinear = False, batchnorm = True, dropout = False, dropout_prob = 0.5, uc = False, device = None):
         super().__init__(save_name + "_fcn", load_name + "_fcn", device = device)
 
-        #### activation layers: leaky relu
-        self.device = device
         self.input_channels = input_channels
         self.output_channels = output_channels
 
         self.num_layers = num_layers
+        self.batchnorm = batchnorm
+        self.nonlinear = nonlinear
+        self.dropout = dropout
+        self.dropout_prob = dropout_prob
+        self.uc = uc
 
-        self.middle_channels_list = middle_channels_list
+        assert self.batchnorm != self.dropout
 
-        if len(self.middle_channels_list) == 0:
-            mc_list_bool = False
-        else:
-            mc_list_bool = True
-
+        # print("Dropout Rate: ", self.dropout_prob)
         # -----------------------
         # Fully connected network
         # -----------------------
         layer_list = []
+        self.layer_name_list = []
 
-        for idx in range(self.num_layers):
+        for i in range(self.num_layers):
+            if dropout:
+                layer_list.append(nn.Dropout(p=dropout_prob))
+                self.layer_name_list.append('dropout1d_' + str(i))
 
-            if mc_list_bool == False:
-                if idx == 0:
-                    layer_list.append(nn.Linear(input_channels, output_channels))
-                    if batchnorm_bool:
-                        layer_list.append(nn.BatchNorm1d(output_channels))
-                    layer_list.append(nn.LeakyReLU(0.1, inplace = True))
-                    if dropout_bool:
-                        layer_list.append(nn.Dropout())
-                elif idx == self.num_layers - 1:
-                    layer_list.append(nn.Linear(output_channels, output_channels))
-                else:
-                    layer_list.append(nn.Linear(output_channels, output_channels))
-                    if batchnorm_bool:
-                        layer_list.append(nn.BatchNorm1d(output_channels))
-                    layer_list.append(nn.LeakyReLU(0.1, inplace = True))
-                    if dropout_bool:
-                        layer_list.append(nn.Dropout())
-
+            if i == 0:
+                layer_list.append(nn.Linear(input_channels, output_channels))
             else:
-                if idx == 0:
-                    layer_list.append(nn.Linear(input_channels, middle_channels_list[idx]))
-                    if batchnorm_bool:
-                        layer_list.append(nn.BatchNorm1d(middle_channels_list[idx]))
-                    layer_list.append(nn.LeakyReLU(0.1, inplace = True))
-                    if dropout_bool:
-                        layer_list.append(nn.Dropout())
-                elif idx == self.num_layers - 1:
-                    layer_list.append(nn.Linear(middle_channels_list[-1], output_channels))
-                else:
-                    layer_list.append(nn.Linear(middle_channels_list[idx - 1], middle_channels_list[idx]))
-                    if batchnorm_bool:
-                        layer_list.append(nn.BatchNorm1d(middle_channels_list[idx]))
-                    layer_list.append(nn.LeakyReLU(0.1, inplace = True))
-                    if dropout_bool:
-                        layer_list.append(nn.Dropout())
+                layer_list.append(nn.Linear(output_channels, output_channels))
 
-        self.model = nn.Sequential(*layer_list)
+            self.layer_name_list.append('linear_' + str(i))
+
+            if i != (self.num_layers - 1) or nonlinear:
+                if batchnorm:
+                    layer_list.append(nn.BatchNorm1d(e_p[1]))
+                    self.layer_name_list.append('batchnorm1d_' + str(i))
+
+                layer_list.append(nn.LeakyReLU(0.1, inplace = False))
+                self.layer_name_list.append('leaky_relu_' + str(i))
+               
+        self.model = nn.ModuleList(layer_list)
+
+    def forward(self, inputs):
+        for i, layer in enumerate(self.model):
+            name = self.layer_name_list[i]
+            if name[:4] == 'drop' and self.uc:
+                layer.train()
+
+            if i == 0:
+                out = layer(inputs)
+            else:
+                out = layer(out)
+
+        return out
 
 ### a basic recurrent neural network 
 class RNNCell(Proto_Model):
@@ -454,25 +547,25 @@ class LSTMCell(Proto_Model):
 
 # class Transformer(Proto_Model):
 class Transformer(Proto_Model):
-    def __init__(self, save_name, load_name, input_size, num_enc_layers, num_dec_layers, z_dim, device = None):
+    def __init__(self, save_name, load_name, input_size, num_enc_layers, num_dec_layers,\
+     norm = None, nhead = 8, dim_feedforward = 2048, dropout = 0.1, activation = 'relu', device = None):
         super().__init__(save_name + "_transformer", load_name + "_transformer", device = device)
 
         self.device = device
         self.input_size = input_size
         self.num_enc_layers = num_enc_layers
         self.num_dec_layers = num_dec_layers
-        self.z_dim = z_dim
 
-
-        self.model = nn.Transformer(d_model=self.input_size, nhead=8, num_encoder_layers=self.num_enc_layers,\
-         num_decoder_layers=self.num_dec_layers, dim_feedforward=self.z_dim,\
-          dropout=0.1, activation='relu')
+        self.model = nn.Transformer(self.input_size, nhead=nhead, num_encoder_layers=self.num_enc_layers,\
+         num_decoder_layers=self.num_dec_layers, dim_feedforward=dim_feedforward,\
+          dropout=dropout, activation=activation)
 
     def forward(self, source, targ):
-        return self.model(source, targ).transpose(0,1)
+        return self.model(source, targ)
 
 class Transformer_Encoder(Proto_Model):
-    def __init__(self, save_name, load_name, input_size, num_layers, norm = None, nhead = 8, dim_feedforward = 2048, dropout = 0.1, activation = 'relu', device = None):
+    def __init__(self, save_name, load_name, input_size, num_layers,\
+     norm = None, nhead = 8, dim_feedforward = 2048, dropout = 0.1, activation = 'relu', device = None):
         super().__init__(save_name + "_trans_encoder", load_name + "_trans_encoder", device = device)
         self.device = device
         self.input_size = input_size
@@ -486,25 +579,45 @@ class Transformer_Encoder(Proto_Model):
         self.model = nn.TransformerEncoder(nn.TransformerEncoderLayer(self.input_size, self.nhead, dim_feedforward = self.dim_feedforward, dropout = self.dropout,\
             activation = self.activation), num_layers = self.num_layers, norm = self.norm)
 
-class Transformer_Decoder(Proto_Model):
-    def __init__(self, save_name, load_name, input_size, num_layers, norm = None, nhead = 8, dim_feedforward = 128, dropout = 0.1, activation = 'relu', device = None):
+class Transformer_Comparer(Proto_Model):
+    def __init__(self, save_name, load_name, input_size, num_layers, dropout_prob = 0.1, uc = True,\
+     nhead = 8, dim_feedforward = 128, activation = 'relu', device = None):
         super().__init__(save_name + "_trans_decoder", load_name + "_trans_decoder", device = device)
         self.device = device
         self.input_size = input_size
         self.num_layers = num_layers
-        self.norm = norm
+
+        self.dropout_prob = dropout_prob
+        self.uc = uc
+
         self.nhead = nhead
         self.dim_feedforward = dim_feedforward
-        self.dropout = dropout
         self.activation = activation
+        self.uc = uc
 
-        self.model = nn.TransformerDecoder(nn.TransformerDecoderLayer(self.input_size, self.nhead, dim_feedforward = self.dim_feedforward, dropout = self.dropout,\
-            activation = self.activation), num_layers = self.num_layers, norm = self.norm)
+        # print("Dropout Rate: ", self.dropout_prob)
 
-    def forward(self, tgt_seq, src_seq, mem_padding_mask = None, tgt_padding_mask = None):
+        layer_list = []
+        self.layer_name_list = []
+
+        for i in range(self.num_layers):
+            layer_list.append(TransformerDecoderLayer_Modified(self.input_size, self.nhead, dim_feedforward = self.dim_feedforward,\
+                dropout = self.dropout_prob, uc =  self.uc))
+            self.layer_name_list.append('trans_dec_' + str(i))
+
+        self.model = nn.ModuleList(layer_list)
+
+    def forward(self, seq, padding_mask = None):
         # print("Padding mask size: ", mem_padding_mask.size())
         # print("input size: ", tgt_seq.size())
-        return self.model(tgt_seq, src_seq, memory_key_padding_mask = mem_padding_mask, tgt_key_padding_mask = tgt_padding_mask)
+        for i, layer in enumerate(self.model):
+            name = self.layer_name_list[i]
+            if i == 0:
+                out = layer(seq, seq, memory_key_padding_mask = padding_mask, tgt_key_padding_mask = padding_mask)
+            else:
+                out = layer(out, out, memory_key_padding_mask = padding_mask, tgt_key_padding_mask = padding_mask)
+
+        return out
 ######################################
 # Current Macromodel Types Supported
 #####################################
@@ -552,7 +665,7 @@ class Proto_Macromodel(nn.Module):
     #     self.parallel = parallel_bool
 
 class ResNetFCN(Proto_Macromodel):
-    def __init__(self, save_name, load_name, input_channels, output_channels, num_layers, device = None):
+    def __init__(self, save_name, load_name, input_channels, output_channels, num_layers, dropout = True, dropout_prob = 0.5, uc = False, device = None):
         super().__init__()
         self.device = device
         self.input_channels = input_channels
@@ -562,27 +675,29 @@ class ResNetFCN(Proto_Macromodel):
         self.num_layers = num_layers
         self.model_list = []
 
-        for idx in range(self.num_layers):
-            if idx == self.num_layers - 1:
-                self.model_list.append(FCN(save_name + "_layer_" + str(idx + 1), load_name + "_layer_" + str(idx + 1), self.input_channels, self.output_channels, 2, batchnorm_bool = False, dropout_bool = True, device = self.device).to(self.device))
+        for i in range(self.num_layers):
+            if i == self.num_layers - 1:
+                self.model_list.append(FCN(save_name + "_layer_" + str(i + 1), load_name + "_layer_" + str(i + 1),\
+                 self.input_channels, self.output_channels, 2, nonlinear = False, batchnorm = False, dropout = dropout,\
+                 dropout_prob = dropout_prob, uc = uc, device = self.device).to(self.device))
             else:
-                self.model_list.append(FCN(save_name + "_layer_" + str(idx + 1), load_name + "_layer_" + str(idx + 1), self.input_channels, self.input_channels, 2, batchnorm_bool = False, dropout_bool = True, device = self.device).to(self.device))
+                self.model_list.append(FCN(save_name + "_layer_" + str(i + 1), load_name + "_layer_" + str(i + 1),\
+                 self.input_channels, self.input_channels, 2, nonlinear = False, batchnorm = False, dropout = dropout,\
+                 dropout_prob = dropout_prob, uc = uc, device = self.device).to(self.device))
 
     def forward(self, x):
-        for idx, model in enumerate(self.model_list):
-            if idx == 0 and self.num_layers == 1:
+        for i, model in enumerate(self.model_list):
+            if i == 0 and self.num_layers == 1:
                 output = model(x)
-            elif idx == 0 and self.num_layers != 1:
+            elif i == 0 and self.num_layers != 1:
                 output = model(x) + x
                 residual = output.clone()
 
-            elif idx == len(self.model_list) - 1:
+            elif i == len(self.model_list) - 1:
                 output = model(output)
             else:
                 output = model(output) + residual
                 residual = output.clone()
                 
         return output
-
-
 

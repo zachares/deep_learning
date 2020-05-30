@@ -29,7 +29,6 @@ class Logger(object):
 		t_now = time.time()
 
 		date = datetime.datetime.fromtimestamp(t_now).strftime('%Y%m%d')
-		time_str = datetime.datetime.fromtimestamp(t_now).strftime('%Y%m%d%H%M')
 
 		# print("Run tracker Date: ", load_cfg['run_tracker']['date'] ,"  Actual Date: ", date)
 		if load_cfg['run_tracker']['date'] == date:
@@ -57,7 +56,7 @@ class Logger(object):
 			if os.path.isdir(logging_folder + 'runs/') == False:
 				os.mkdir(logging_folder + 'runs/')
 
-			self.runs_folder = logging_folder + 'runs/' + time_str + "_"+ run_description + "_" +\
+			self.runs_folder = logging_folder + 'runs/' + date + "_"+ run_description + "_" +\
 			str(run_tracking_num) + trial_description + "/"
 
 			print("Runs folder: ", self.runs_folder)    
@@ -68,12 +67,13 @@ class Logger(object):
 				if os.path.isdir(logging_folder + 'models/') == False:
 					os.mkdir(logging_folder + 'models/')
 
-				self.models_folder = logging_folder + 'models/' + time_str + "_"+ run_description + "_" +\
+				self.models_folder = logging_folder + 'models/' + date + "_"+ run_description + "_" +\
 				str(run_tracking_num) + trial_description + "/"
 
 				os.mkdir(self.models_folder)
 				print("Model Folder:  ", self.models_folder)
-				self.save_dict("config_params", cfg, True)
+				self.save_dict("learning_params", cfg, True)
+				self.save_dict("learning_params", cfg, True, folder = self.models_folder)
 				
 			self.writer = SummaryWriter(self.runs_folder)
 
@@ -83,17 +83,23 @@ class Logger(object):
 				# print(key, logging_dict['scalar'][key])
 				self.writer.add_scalar(label + key, logging_dict['scalar'][key], iteration)
 
-	def save_dict(self, name, dictionary, yml_bool):
-		if self.debugging_flag == False and yml_bool:
-			print("Saving ", name, " to: ", self.runs_folder + name + ".yml")
+	def save_dict(self, name, dictionary, yml_bool, folder = None):
+		if self.debugging_flag == False:
+			if folder == None:
+				save_folder = self.runs_folder
+			else:
+				save_folder = folder
 
-			with open(self.runs_folder + name + ".yml", 'w') as ymlfile2:
-				yaml.dump(dictionary, ymlfile2)
+			if yml_bool:
+				print("Saving ", name, " to: ", save_folder + name + ".yml")
 
-		elif self.debugging_flag == False:
-			print("Saving ", name, " to: ", self.runs_folder + name + ".pkl")
-			with open(self.runs_folder + name + '.pkl', 'wb') as f:
-				pickle.dump(dictionary, f, pickle.HIGHEST_PROTOCOL)
+				with open(save_folder + name + ".yml", 'w') as ymlfile2:
+					yaml.dump(dictionary, ymlfile2)
+
+			else:
+				print("Saving ", name, " to: ", save_folder + name + ".pkl")
+				with open(save_folder + name + '.pkl', 'wb') as f:
+					pickle.dump(dictionary, f, pickle.HIGHEST_PROTOCOL)
 
 	def save_images2D(self, logging_dict, iteration, label):
 		if self.debugging_flag == False and len(list(logging_dict['image'].keys())) != 0:

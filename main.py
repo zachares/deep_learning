@@ -26,8 +26,6 @@ def main():
 
     idx_dict_path = cfg['dataloading_params']['idx_dict_path']
 
-    save_val_interval = cfg['logging_params']['save_val_interval']
-
     test_run = False
 
     if run_mode == 0:
@@ -75,6 +73,16 @@ def main():
         save_model_flag = True
     else:
         raise Exception("Sorry, " + var + " is not a valid input for determine whether to save models" )
+
+    if save_model_flag or not debugging_flag:
+        var = input("Every how many epochs would you like to test the model on the validation set and save it?[1,2,...,1000,...,inf]:")
+        save_val_interval = int(var)
+
+        assert type(save_val_interval) == int
+
+        print("Validating and saving every ", save_val_interval, " epochs")
+    else:
+        save_val_interval = max_epoch
     ##################################################################################
     # hardware and low level training details
     ##################################################################################
@@ -107,6 +115,7 @@ def main():
 
     if save_model_flag:
         logger.save_dict("val_train_split", idx_dict, False)
+        logger.save_dict("val_train_split", idx_dict, False, folder = logger.model_folder)
         trainer.save(0)
     ##################################################################################
     ####### Training ########
