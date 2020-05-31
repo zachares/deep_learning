@@ -64,6 +64,7 @@ class Trainer(object):
 
 		self.loss_dict["Multinomial_Entropy"] = Proto_Loss(multinomial.inputs2ent)
 		self.loss_dict["Multinomial_KL"] = Proto_Loss(multinomial.inputs2KL)
+		self.loss_dict["Multinomial_KL_Ensemble"] = Proto_Loss_Ensemble(multinomial.inputs2KL)
 
 		self.loss_dict["Gaussian_NLL"] = Proto_Loss(gaussian.negative_log_likelihood)
 		self.loss_dict["Gaussian_KL"] =  Proto_Loss(gaussian.divergence_KL)

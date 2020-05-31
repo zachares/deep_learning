@@ -115,7 +115,7 @@ def main():
 
     if save_model_flag:
         logger.save_dict("val_train_split", idx_dict, False)
-        logger.save_dict("val_train_split", idx_dict, False, folder = logger.model_folder)
+        logger.save_dict("val_train_split", idx_dict, False, folder = logger.models_folder)
         trainer.save(0)
     ##################################################################################
     ####### Training ########
