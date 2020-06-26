@@ -37,82 +37,6 @@ class Flatten(nn.Module):
     def forward(self, inputs):
         return inputs.view(input.size(0), -1)
 
-
-class TransformerDecoderLayer_Modified(nn.Module):
-    '''TransformerDecoderLayer is made up of self-attn, multi-head-attn and feedforward network.
-    This standard decoder layer is based on the paper "Attention Is All You Need".
-    Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez,
-    Lukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. In Advances in
-    Neural Information Processing Systems, pages 6000-6010. Users may modify or implement
-    in a different way during application.
-    Args:
-        d_model: the number of expected features in the input (required).
-        nhead: the number of heads in the multiheadattention models (required).
-        dim_feedforward: the dimension of the feedforward network model (default=2048).
-        dropout: the dropout value (default=0.1).
-        activation: the activation function of intermediate layer, relu or gelu (default=relu).
-    Examples::
-        >>> decoder_layer = nn.TransformerDecoderLayer(d_model=512, nhead=8)
-        >>> memory = torch.rand(10, 32, 512)
-        >>> tgt = torch.rand(20, 32, 512)
-        >>> out = decoder_layer(tgt, memory)
-    '''
-
-    def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1, uc = True):
-        super().__init__()
-        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
-        self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
-        # Implementation of Feedforward model
-        self.linear1 = nn.Linear(d_model, dim_feedforward)
-        self.dropout = nn.Dropout(dropout)
-        self.linear2 = nn.Linear(dim_feedforward, d_model)
-
-        self.norm1 = nn.LayerNorm(d_model)
-        self.norm2 = nn.LayerNorm(d_model)
-        self.norm3 = nn.LayerNorm(d_model)
-        self.dropout1 = nn.Dropout(dropout)
-        self.dropout2 = nn.Dropout(dropout)
-        self.dropout3 = nn.Dropout(dropout)
-
-        self.activation = nn.ReLU()
-
-        self.uc = uc
-
-    def forward(self, tgt, memory, tgt_mask=None, memory_mask=None,
-                tgt_key_padding_mask=None, memory_key_padding_mask=None):
-        # type: (Tensor, Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor], Optional[Tensor]) -> Tensor
-        r"""Pass the inputs (and mask) through the decoder layer.
-        Args:
-            tgt: the sequence to the decoder layer (required).
-            memory: the sequence from the last layer of the encoder (required).
-            tgt_mask: the mask for the tgt sequence (optional).
-            memory_mask: the mask for the memory sequence (optional).
-            tgt_key_padding_mask: the mask for the tgt keys per batch (optional).
-            memory_key_padding_mask: the mask for the memory keys per batch (optional).
-        Shape:
-            see the docs in Transformer class.
-        """
-        if self.uc:
-            self.dropout1.train()
-            self.dropout2.train()
-            self.dropout3.train()
-            self.self_attn.train()
-            self.multihead_attn.train()
-
-        tgt2 = self.self_attn(tgt, tgt, tgt, attn_mask=tgt_mask,
-                              key_padding_mask=tgt_key_padding_mask)[0]
-        tgt = tgt + self.dropout1(tgt2)
-        tgt = self.norm1(tgt)
-        tgt2 = self.multihead_attn(tgt, memory, memory, attn_mask=memory_mask,
-                                   key_padding_mask=memory_key_padding_mask)[0]
-        tgt = tgt + self.dropout2(tgt2)
-
-        tgt = self.norm2(tgt)
-        tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt))))
-
-        tgt = tgt + self.dropout3(tgt2)
-        tgt = self.norm3(tgt)
-        return tgt
 #########################################
 # Current Model Types Supported 
 ########################################
@@ -204,10 +128,6 @@ class CONV2DN(Proto_Model):
             self.layer_name_list.append('conv2d_' + str(i))
 
             if i != (len(e_p_list) - 1) or nonlinear:
-                if dropout:
-                    layer_list.append(nn.Dropout(p=dropout_prob))
-                    self.layer_name_list.append('dropout_' + str(i))
-
                 if batchnorm:
                     layer_list.append(nn.BatchNorm2d(e_p[1]))
                     self.layer_name_list.append('batchnorm2d_' + str(i))
@@ -215,6 +135,9 @@ class CONV2DN(Proto_Model):
                 layer_list.append(nn.LeakyReLU(0.1, inplace = False))
                 self.layer_name_list.append('leaky_relu_' + str(i))
 
+                if dropout:
+                    layer_list.append(nn.Dropout2d(p=dropout_prob))
+                    self.layer_name_list.append('dropout_' + str(i))
 
 
         self.model = nn.ModuleList(layer_list)
@@ -274,10 +197,6 @@ class DECONV2DN(Proto_Model):
             self.layer_name_list.append('deconv2d_' + str(i))
 
             if i != (len(e_p_list) - 1) or nonlinear:
-                if dropout:
-                    layer_list.append(nn.Dropout(p=dropout_prob))
-                    self.layer_name_list.append('dropout_' + str(i))
-
                 if batchnorm:
                     layer_list.append(nn.BatchNorm2d(e_p[1]))
                     self.layer_name_list.append('batchnorm2d_' + str(i))
@@ -285,6 +204,9 @@ class DECONV2DN(Proto_Model):
                 layer_list.append(nn.LeakyReLU(0.1, inplace = False))
                 self.layer_name_list.append('leaky_relu_' + str(i))
 
+                if dropout:
+                    layer_list.append(nn.Dropout2d(p=dropout_prob))
+                    self.layer_name_list.append('dropout_' + str(i))
 
         self.model = nn.ModuleList(layer_list)
         # -----------------------
@@ -327,7 +249,7 @@ class CONV1DN(Proto_Model):
         self.dropout_prob = dropout_prob
         self.uc = uc
 
-        assert self.dropout != self.batchnorm
+        # assert self.dropout != self.batchnorm
 
         # print("Dropout Rate: ", self.dropout_prob)
         #assume that the prime factorization of rows and cols is composed of only powers of 3 and 2
@@ -342,17 +264,17 @@ class CONV1DN(Proto_Model):
             self.layer_name_list.append('conv1d_' + str(i))
 
             if i != (len(e_p_list) - 1) or nonlinear:
-                if dropout:
-                    layer_list.append(nn.Dropout(p=dropout_prob))
-                    self.layer_name_list.append('dropout_' + str(i))
-
                 if batchnorm:
                     layer_list.append(nn.BatchNorm1d(e_p[1]))
                     self.layer_name_list.append('batchnorm1d_' + str(i))
 
                 layer_list.append(nn.LeakyReLU(0.1, inplace = False))
                 self.layer_name_list.append('leaky_relu_' + str(i))
-               
+
+                if dropout:
+                    layer_list.append(nn.Dropout(p=dropout_prob))
+                    self.layer_name_list.append('dropout1d_' + str(i))
+
         self.model = nn.ModuleList(layer_list)
 
     def forward(self, inputs):
@@ -397,16 +319,16 @@ class DECONV1DN(Proto_Model):
             self.layer_name_list.append('conv1d_' + str(i))
 
             if i != (len(e_p_list) - 1) or nonlinear:
-                if dropout:
-                    layer_list.append(nn.Dropout(p=dropout_prob))
-                    self.layer_name_list.append('dropout1d_' + str(i))
-
                 if batchnorm:
                     layer_list.append(nn.BatchNorm1d(e_p[1]))
                     self.layer_name_list.append('batchnorm1d_' + str(i))
 
                 layer_list.append(nn.LeakyReLU(0.1, inplace = False))
                 self.layer_name_list.append('leaky_relu_' + str(i))
+
+                if dropout:
+                    layer_list.append(nn.Dropout(p=dropout_prob))
+                    self.layer_name_list.append('dropout1d_' + str(i))
 
         self.model = nn.ModuleList(layer_list)
 
@@ -449,10 +371,6 @@ class FCN(Proto_Model):
         self.layer_name_list = []
 
         for i in range(self.num_layers):
-            if dropout:
-                layer_list.append(nn.Dropout(p=dropout_prob))
-                self.layer_name_list.append('dropout1d_' + str(i))
-
             if i == 0:
                 layer_list.append(nn.Linear(input_channels, output_channels))
             else:
@@ -467,6 +385,10 @@ class FCN(Proto_Model):
 
                 layer_list.append(nn.LeakyReLU(0.1, inplace = False))
                 self.layer_name_list.append('leaky_relu_' + str(i))
+
+                if dropout:
+                    layer_list.append(nn.Dropout(p=dropout_prob))
+                    self.layer_name_list.append('dropout1d_' + str(i))
                
         self.model = nn.ModuleList(layer_list)
 
@@ -601,9 +523,12 @@ class Transformer_Comparer(Proto_Model):
         self.layer_name_list = []
 
         for i in range(self.num_layers):
-            layer_list.append(TransformerDecoderLayer_Modified(self.input_size, self.nhead, dim_feedforward = self.dim_feedforward,\
-                dropout = self.dropout_prob, uc =  self.uc))
+            layer_list.append(nn.TransformerDecoderLayer(self.input_size, self.nhead, dim_feedforward = self.dim_feedforward))
             self.layer_name_list.append('trans_dec_' + str(i))
+
+            if i != (self.num_layers - 1):
+                layer_list.append(nn.Dropout(p=dropout_prob))
+                self.layer_name_list.append('dropout1d_' + str(i))
 
         self.model = nn.ModuleList(layer_list)
 
@@ -612,10 +537,19 @@ class Transformer_Comparer(Proto_Model):
         # print("input size: ", tgt_seq.size())
         for i, layer in enumerate(self.model):
             name = self.layer_name_list[i]
-            if i == 0:
-                out = layer(seq, seq, memory_key_padding_mask = padding_mask, tgt_key_padding_mask = padding_mask)
+            if name[:4] == 'drop':
+                if self.uc:
+                    layer.train()
+                    
+                if i == 0:
+                    out = layer(seq)
+                else:
+                    out = layer(out)
             else:
-                out = layer(out, out, memory_key_padding_mask = padding_mask, tgt_key_padding_mask = padding_mask)
+                if i == 0:
+                    out = layer(seq, seq, memory_key_padding_mask = padding_mask, tgt_key_padding_mask = padding_mask)
+                else:
+                    out = layer(out, out, memory_key_padding_mask = padding_mask, tgt_key_padding_mask = padding_mask)
 
         return out
 ######################################

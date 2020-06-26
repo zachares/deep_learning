@@ -60,6 +60,7 @@ class Trainer(object):
 		self.loss_dict["L1"] = Proto_Loss(nn.L1Loss(reduction = "none"))
 		self.loss_dict["Multinomial_NLL"] = Proto_Loss(nn.CrossEntropyLoss(reduction = "none"))
 		self.loss_dict["Multinomial_NLL_Ensemble"] = Proto_Loss_Ensemble(nn.CrossEntropyLoss(reduction = "none"))
+		self.loss_dict["Weighted_Multinomial_NLL_Ensemble"] = Proto_Loss_Ensemble(nn.CrossEntropyLoss(weight = torch.tensor([2,1]).float().to(self.device), reduction = "none"))
 		self.loss_dict["Binomial_NLL"] = Proto_Loss(nn.BCEWithLogitsLoss(reduction = "none"))
 
 		self.loss_dict["Multinomial_Entropy"] = Proto_Loss(multinomial.inputs2ent)
@@ -76,7 +77,7 @@ class Trainer(object):
 		self.eval_dict["Multinomial_Entropy"] = Proto_Metric(multinomial.inputs2ent_metric, ["entropy", "correxample_entropy", "incorrexample_entropy"])
 		self.eval_dict["Multinomial_Accuracy_Ensemble"] = Proto_Metric_Ensemble(multinomial.inputs2acc, ["accuracy"])
 		self.eval_dict["Multinomial_Entropy_Ensemble"] = Proto_Metric_Ensemble(multinomial.inputs2ent_metric, ["entropy", "correxample_entropy", "incorrexample_entropy"])		
-		
+		self.eval_dict["Multinomial_Entropy_Spread_Ensemble"] = Proto_Metric_Ensemble(multinomial.inputs2gap, ["entropy_gap"])
 		self.eval_dict["Gaussian_Error_Distrb"] = Proto_Metric(gaussian.params2error_metric, ["average_error", "covariance_error_Ratio"])
 		self.eval_dict["Gaussian_Error_Samples"] = Proto_Metric(gaussian.samples2error_metric, ["average_error", "covariance_error_Ratio"])
 		self.eval_dict["Continuous_Error"] = Proto_Metric(utils.continuous2error_metric, ["average_accuracy", "average_error_mag"])
