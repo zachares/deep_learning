@@ -99,6 +99,21 @@ class Params(Proto_Model):
     # def set_parallel(self, bool):
     #     pass
 
+class Embedding(Proto_Model):
+    def __init__(self, save_name, load_name, num_embed, embed_dim, padding_idx = None, device= None):
+        super().__init__(save_name + "_embed", load_name + "_embed", device = device)
+
+        self.device = device
+        self.num_embed = num_embed
+        self.embed_dim = embed_dim
+        self.model = nn.Embedding(self.num_embed, self.embed_dim,\
+         padding_idx=padding_idx, max_norm=None, norm_type=2.0, scale_grad_by_freq=False, sparse=False, _weight=None)
+
+    def forward(self, idxs):
+        return self.model(idxs)
+    # def set_parallel(self, bool):
+    #     pass
+
 class CONV2DN(Proto_Model):
     def __init__(self, save_name, load_name, input_size, output_size, nonlinear = False,\
         batchnorm = True, dropout = False, dropout_prob = 0.5, uc = True, device = None):
@@ -112,8 +127,6 @@ class CONV2DN(Proto_Model):
         self.dropout = dropout
         self.dropout_prob = dropout_prob
         self.uc = uc
-
-        assert self.dropout != self.batchnorm
 
         #assume that the prime factorization of rows and cols is composed of only powers of 3 and 2
         e_p_list = get_2Dconv_params(input_size, output_size) # encoder parameters

@@ -12,13 +12,16 @@ def continuous2error_metric(preds, labels):
 
     errors = labels - preds
 
-    if num_size_dims == 1 or num_size_dims == 2:
+    if num_size_dims <= 3:
         if num_size_dims == 1:
             errors_norm = torch.abs(errors)
             labels_norm = torch.abs(labels)
-        else:
+        elif num_size_dims == 2:
             errors_norm = errors.norm(p=2, dim =1)
             labels_norm = labels.norm(p=2, dim = 1)
+        else:
+            errors_norm = torch.sqrt(errors.pow(2).sum(2).sum(1))
+            labels_norm = torch.sqrt(labels.pow(2).sum(2).sum(1))
 
         accuracy = torch.where(torch.abs(errors_norm - labels_norm) < labels_norm, errors_norm / labels_norm, torch.ones_like(errors_norm))
         return accuracy, errors_norm

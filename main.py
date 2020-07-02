@@ -104,19 +104,15 @@ def main():
     logger = Logger(cfg, debugging_flag, save_model_flag, run_description)
 
     ##################################################################################
-    #### Training tool to train and evaluate neural networks
-    ##################################################################################
-    trainer = Trainer(cfg, logger.models_folder, save_model_flag, device)
-
-    ##################################################################################
     #### Dataset creation function
     ##################################################################################
     data_loader, val_data_loader, idx_dict = init_dataloader(cfg, device, idx_dict_path)
 
-    if save_model_flag:
-        logger.save_dict("val_train_split", idx_dict, False)
-        logger.save_dict("val_train_split", idx_dict, False, folder = logger.models_folder)
-        trainer.save(0)
+    ##################################################################################
+    #### Training tool to train and evaluate neural networks
+    ##################################################################################
+    trainer = Trainer(cfg, logger.models_folder, save_model_flag, device)
+
     ##################################################################################
     ####### Training ########
     ##################################################################################
@@ -124,6 +120,13 @@ def main():
     i_epoch = 0
     val_global_cnt = 0
     prev_time = time.time()
+
+    if save_model_flag:
+        logger.save_dict("val_train_split", idx_dict, False)
+        logger.save_dict("val_train_split", idx_dict, False, folder = logger.models_folder)
+        logger.save_dict("learning_params", cfg, True)
+        logger.save_dict("learning_params", cfg, True, folder = logger.models_folder)
+        trainer.save(i_epoch)
 
     if not test_run:
         for i_epoch in range(max_epoch):
