@@ -23,16 +23,14 @@ def logprobs(means, prec, samples):
     else:
         raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
 
-def negative_log_likelihood(input_tuple):
-    params, labels = input_tuple
+def negative_log_likelihood(params, labels):
     means, precs = params
     return -1.0 * logprobs(means, precs, labels)
 
-def samples2error_metric(input_tuple):
-    params, labels = input_tuple
+def samples2error_metric(params, labels):
     means, precs = params
 
-    num_size_dims = len(list(prec.size()))
+    num_size_dims = len(list(precs.size()))
 
     errors = labels - means
 
@@ -44,13 +42,13 @@ def samples2error_metric(input_tuple):
             errors_norm = errors.norm(p=2, dim =1)
 
         if num_size_dims == 1:
-            cov_trace_sum = (1 / prec)
+            cov_trace_sum = precs.pow(-1)
         elif num_size_dims == 2:
-            covtraces_sum = (1 / prec).sum(1)
+            covtraces_sum = precs.pow(-1).sum(1)
         else:
             covtraces_sum = torch.diagonal(torch.inverse(precs), dim1 = 1, dim2=2).sum(1)
 
-        covtrace_error_ratio = torch.where(errors_sqnorm != 0, (covtraces_sum / errors_norm.pow(2)), torch.zeros_like(errors_sqnorm))
+        covtrace_error_ratio = torch.where(errors_norm.pow(2) != 0, (covtraces_sum / errors_norm.pow(2)), torch.zeros_like(errors_norm))
 
         return errors_norm, covtrace_error_ratio 
     else:

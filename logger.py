@@ -14,7 +14,6 @@ from sklearn.manifold import TSNE
 
 import matplotlib.pyplot as plt 
 
-
 class Logger(object):
 	def __init__(self, cfg, debugging_flag, save_model_flag, run_description):
 		self.debugging_flag = debugging_flag
@@ -46,22 +45,23 @@ class Logger(object):
 		self.runs_folder = ""
 		self.models_folder = ""
 
-		if self.debugging_flag == False:
+		if self.debugging_flag == False or save_model_flag:
 
 			run_tracking_num = load_cfg['run_tracker'][run_description]
 
 			if os.path.isdir(logging_folder) == False:
 				os.mkdir(logging_folder)
 
-			if os.path.isdir(logging_folder + 'runs/') == False:
-				os.mkdir(logging_folder + 'runs/')
+			if self.debugging_flag == False:
+				if os.path.isdir(logging_folder + 'runs/') == False:
+					os.mkdir(logging_folder + 'runs/')
 
-			self.runs_folder = logging_folder + 'runs/' + date + "_"+ run_description + "_" +\
-			str(run_tracking_num) + trial_description + "/"
+				self.runs_folder = logging_folder + 'runs/' + date + "_"+ run_description + "_" +\
+				str(run_tracking_num) + trial_description + "/"
 
-			print("Runs folder: ", self.runs_folder)    
+				print("Runs folder: ", self.runs_folder)    
 
-			os.mkdir(self.runs_folder)
+				os.mkdir(self.runs_folder)
 			
 			if save_model_flag:
 				if os.path.isdir(logging_folder + 'models/') == False:
@@ -71,9 +71,9 @@ class Logger(object):
 				str(run_tracking_num) + trial_description + "/"
 
 				os.mkdir(self.models_folder)
-				print("Model Folder:  ", self.models_folder)
-				self.save_dict("learning_params", cfg, True)
-				self.save_dict("learning_params", cfg, True, folder = self.models_folder)
+				# print("Model Folder:  ", self.models_folder)
+				# self.save_dict("learning_params", cfg, True)
+				# self.save_dict("learning_params", cfg, True, folder = self.models_folder)
 				
 			self.writer = SummaryWriter(self.runs_folder)
 

@@ -2,19 +2,13 @@ import sys
 import torch
 import torch.optim as optim
 import torch.autograd as autograd
+import utils_sl as sl
 
 import yaml
 
-from models import *
-from supervised_learning_utils import *
-
-import multinomial as multinomial
-import gaussian as gaussian
-import utils as utils
 ######### this model only supports ADAM for optimization at the moment
 class Trainer(object):
-	def __init__(self, cfg, models_folder, save_models_flag, device):
-
+	def __init__(self, cfg, model_dict, device):
 		batch_size = cfg['dataloading_params']['batch_size']
 		regularization_weight = cfg['training_params']['regularization_weight']
 		learning_rate = cfg['training_params']['lrn_rate']
@@ -29,12 +23,11 @@ class Trainer(object):
 		print("Initializing Neural Network Models")
 		self.model_inputs = {}
 		self.model_outputs = {}
-		self.model_dict = declare_models(cfg, models_folder, self.device)	
+		self.model_dict = model_dict 	
 
 		#### Setting per step model update method ####
 		# Adam is a type of stochastic gradient descent    
 		self.opt_dict = {}
-		parameters_list = []
 
 		for key in self.model_dict.keys():
 			if self.info_flow[key]["train"] == 1:
@@ -43,46 +36,8 @@ class Trainer(object):
 				self.opt_dict[key] = optim.Adam(parameters_list, lr=learning_rate, betas=(beta_1, beta_2), weight_decay = regularization_weight)
 			else:
 				print("Not Training ", key)
-
-		# 	if self.info_flow[key]["train"] == 1:
-		# 		print("Training " , key)
-		# 		parameters_list += list(self.model_dict[key].parameters())
-		# 	else:
-		# 		print("Not Training ", key)
-
-		# self.opt_dict[key] = optim.Adam(parameters_list, lr=learning_rate, betas=(beta_1, beta_2), weight_decay = regularization_weight)	
 		
-		###############################################
-		##### Declaring possible loss functions
-		##############################################
-		self.loss_dict = {}
-		self.loss_dict["MSE"] = Proto_Loss(nn.MSELoss(reduction = "none"))
-		self.loss_dict["L1"] = Proto_Loss(nn.L1Loss(reduction = "none"))
-		self.loss_dict["L1_Ensemble"] = Proto_Loss_Ensemble(nn.L1Loss(reduction = "none"))
-		self.loss_dict["Multinomial_NLL"] = Proto_Loss(nn.CrossEntropyLoss(reduction = "none"))
-		self.loss_dict["Multinomial_NLL_Ensemble"] = Proto_Loss_Ensemble(nn.CrossEntropyLoss(reduction = "none"))
-		self.loss_dict["Weighted_Multinomial_NLL_Ensemble"] = Proto_Loss_Ensemble(nn.CrossEntropyLoss(weight = torch.tensor([2,1]).float().to(self.device), reduction = "none"))
-		self.loss_dict["Binomial_NLL"] = Proto_Loss(nn.BCEWithLogitsLoss(reduction = "none"))
-
-		self.loss_dict["Multinomial_Entropy"] = Proto_Loss(multinomial.inputs2ent)
-		self.loss_dict["Multinomial_KL"] = Proto_Loss(multinomial.inputs2KL)
-		self.loss_dict["Multinomial_KL_Ensemble"] = Proto_Loss_Ensemble(multinomial.inputs2KL)
-
-		self.loss_dict["Gaussian_NLL"] = Proto_Loss(gaussian.negative_log_likelihood)
-		self.loss_dict["Gaussian_KL"] =  Proto_Loss(gaussian.divergence_KL)
-		###############################################
-		##### Declaring possible evaluation functions
-		##############################################
-		self.eval_dict = {}
-		self.eval_dict["Multinomial_Accuracy"] = Proto_Metric(multinomial.inputs2acc, ["accuracy"])
-		self.eval_dict["Multinomial_Entropy"] = Proto_Metric(multinomial.inputs2ent_metric, ["entropy", "correxample_entropy", "incorrexample_entropy"])
-		self.eval_dict["Multinomial_Accuracy_Ensemble"] = Proto_Metric_Ensemble(multinomial.inputs2acc, ["accuracy"])
-		self.eval_dict["Multinomial_Entropy_Ensemble"] = Proto_Metric_Ensemble(multinomial.inputs2ent_metric, ["entropy", "correxample_entropy", "incorrexample_entropy"])		
-		self.eval_dict["Multinomial_Entropy_Spread_Ensemble"] = Proto_Metric_Ensemble(multinomial.inputs2gap, ["entropy_gap"])
-		self.eval_dict["Gaussian_Error_Distrb"] = Proto_Metric(gaussian.params2error_metric, ["average_error", "covariance_error_Ratio"])
-		self.eval_dict["Gaussian_Error_Samples"] = Proto_Metric(gaussian.samples2error_metric, ["average_error", "covariance_error_Ratio"])
-		self.eval_dict["Continuous_Error"] = Proto_Metric(utils.continuous2error_metric, ["average_accuracy", "average_error_mag"])
-		self.eval_dict["Continuous_Error_Ensemble"] = Proto_Metric_Ensemble(utils.continuous2error_metric, ["average_accuracy", "average_error_mag"])
+		self.loss_dict, self.eval_dict = sl.get_loss_and_eval_dict()
 		####################################
 		##### Training Results Dictionary for logger #############
 		##########################################
@@ -129,8 +84,8 @@ class Trainer(object):
 		for key in self.model_dict.keys():
 			self.model_inputs[key] = {}
 			
-			for input_key in self.info_flow[key]["inputs"].keys():
-				input_source = self.info_flow[key]["inputs"][input_key]
+			for input_key in self.info_flow[key]['inputs'].keys():
+				input_source = self.info_flow[key]['inputs'][input_key]
 
 				if input_key in self.model_outputs[input_source].keys():
 					self.model_inputs[key][input_key] = self.model_outputs[input_source][input_key]
@@ -165,12 +120,7 @@ class Trainer(object):
 							loss_dict = self.info_flow[model_key]['outputs'][output_key]["losses"][loss_function_name] 
 							logging_name = loss_dict["logging_name"]
 
-							if 'weight' in loss_dict.keys():
-								weight = loss_dict['weight']
-							else:
-								weight = 1.0
-
-							loss += loss_function.forward(tuple(input_list), self.logging_dict, weight, model_key + "/" + logging_name)
+							loss += loss_function.forward(tuple(input_list), self.logging_dict, model_key + "/" + logging_name, loss_dict)
 
 					if "evals" in list(self.info_flow[model_key]["outputs"][output_key].keys()):
 						
@@ -180,17 +130,23 @@ class Trainer(object):
 							eval_dict = self.info_flow[model_key]['outputs'][output_key]["evals"][metric_name]
 							logging_name = eval_dict["logging_name"]
 
-							eval_function.measure(tuple(input_list), self.logging_dict, model_key + "/" + logging_name)
+							eval_function.measure(tuple(input_list), self.logging_dict, model_key + "/" + logging_name, eval_dict)
 
 		return loss
 
-	def load(self, path_dict = {}):
-		for key in self.model_dict.keys():
-			self.model_dict[key].load(path_dict)
+	def save(self, epoch_num, model_folder):
+		#saving each model_module's state dictionary and model dictionary
+		for key, model in self.model_dict.items():
+			model_dict = {
+				key: model,
+			}
 
-	def save(self, epoch_num):
-		for key in self.model_dict.keys():
-			self.model_dict[key].save(epoch_num)		
+			torch.save(model_dict, model_folder + key + "_" + str(epoch_num).zfill(6) + ".pkl")
+
+			print("Saving model " + key + " to " + model_folder + key + "_" + str(epoch_num).zfill(6) + ".pkl")
+
+			model.save(epoch_num, model_folder)	
+	
 
 
 
