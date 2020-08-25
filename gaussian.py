@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-def logprobs(means, prec, samples):
+def _logprobs(means, prec, samples):
     num_size_dims = len(list(prec.size()))
 
     if num_size_dims == 1: # univariate
@@ -25,7 +25,11 @@ def logprobs(means, prec, samples):
 
 def negative_log_likelihood(params, labels):
     means, precs = params
-    return -1.0 * logprobs(means, precs, labels)
+    return -1.0 * _logprobs(means, precs, labels).sum(-1)
+
+def negative_entropy(params, labels):
+    means, precs = params
+    return 1.0 * _logprobs(means, precs, labels).sum(-1)
 
 def samples2error_metric(params, labels):
     means, precs = params

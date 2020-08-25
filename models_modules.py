@@ -374,6 +374,11 @@ class FCN(Proto_Model):
         self.dropout_prob = dropout_prob
         self.uc = uc
 
+        if input_channels > output_channels:
+            middle_channels = input_channels
+        else:
+            middle_channels = output_channels
+
         assert self.batchnorm != self.dropout
 
         # print("Dropout Rate: ", self.dropout_prob)
@@ -387,18 +392,26 @@ class FCN(Proto_Model):
             if dropout:
                 layer_list.append(nn.Dropout(p=dropout_prob))
                 self.layer_name_list.append('dropout1d_' + str(i))
-               
-            if i == 0:
-                layer_list.append(nn.Linear(input_channels, output_channels))
-            else:
-                layer_list.append(nn.Linear(output_channels, output_channels))
 
-            self.layer_name_list.append('linear_' + str(i))
+            if self.num_layers == 1:
+                layer_list.append(nn.Linear(input_channels, output_channels))
+                self.layer_name_list.append('linear_' + str(i))
+            else:
+                if i == (self.num_layers - 1):
+                    layer_list.append(nn.Linear(middle_channels, output_channels))
+                    self.layer_name_list.append('linear_' + str(i))
+                elif i == 0:
+                    layer_list.append(nn.Linear(input_channels, middle_channels))
+                    self.layer_name_list.append('linear_' + str(i))
+                else:
+                    layer_list.append(nn.Linear(middle_channels, middle_channels))
+                    self.layer_name_list.append('linear_' + str(i))
+
 
             if i != (self.num_layers - 1) or nonlinear:
-                if batchnorm:
-                    layer_list.append(nn.BatchNorm1d(e_p[1]))
-                    self.layer_name_list.append('batchnorm1d_' + str(i))
+                # if batchnorm:
+                #     layer_list.append(nn.BatchNorm1d(e_p[1]))
+                #     self.layer_name_list.append('batchnorm1d_' + str(i))
 
                 layer_list.append(nn.LeakyReLU(0.1, inplace = False))
                 self.layer_name_list.append('leaky_relu_' + str(i))
@@ -418,7 +431,6 @@ class FCN(Proto_Model):
                 out = layer(out)
 
         return out
-
 # ### a basic recurrent neural network 
 # class RNNCell(Proto_Model):
 #     def __init__(self, model_name, input_channels, output_channels, nonlinearity = 'tanh',  device = None):
@@ -588,21 +600,38 @@ class Proto_Macromodel(nn.Module):
 
     def save(self, epoch_num, model_folder):
         for model in self.model_list:
-            model.save(epoch_num, model_folder)
+            if type(model) == list:
+                for small_model in model:
+                    small_model.save(epoch_num, model_folder)
+            else:
+                model.save(epoch_num, model_folder)
 
     def load(self, epoch_num, model_folder):
         for model in self.model_list:
-            model.load(epoch_num, model_folder)
+            if type(model) == list:
+                for small_model in model:
+                    small_model.load(epoch_num, model_folder)
+            else:
+                model.load(epoch_num, model_folder)
 
     def parameters(self):
         parameters = []
         for model in self.model_list:
-            parameters += list(model.parameters())
+            if type(model) == list:
+                for small_model in model:
+                    parameters += list(small_model.parameters())
+            else:
+                parameters += list(model.parameters())
+
         return parameters
 
     def eval(self):
         for model in self.model_list:
-            model.eval()
+            if type(model) == list:
+                for small_model in model:
+                    small_model.eval()
+            else:            
+                model.eval()
 
     # def set_parallel(self, parallel_bool):
     #     if parallel_bool:
@@ -621,6 +650,8 @@ class ResNetFCN(Proto_Macromodel):
 
         self.num_layers = num_layers
         self.model_list = []
+
+        assert input_channels > output_channels
 
         for i in range(self.num_layers):
             if i == self.num_layers - 1:
@@ -652,4 +683,51 @@ class ResNetFCN(Proto_Macromodel):
                 residual = output.clone()
                 
         return output
+
+# class MultResNetFCN(Proto_Macromodel):
+#     def __init__(self, model_name, input_channels, output_channels, num_layers, num_reps = 3, dropout = True, dropout_prob = 0.5, uc = False, device = None):
+#         super().__init__()
+#         self.device = device
+#         self.input_channels = input_channels
+#         self.save_bool = True
+#         self.output_channels = output_channels
+
+#         self.num_layers = num_layers
+#         self.num_reps = num_reps
+#         self.model_list = []
+
+#         assert input_channels > output_channels
+
+#         for i in range(self.num_layers):
+#             if i == self.num_layers - 1:
+#                 self.model_list.append([FCN(model_name + "_layer_" + str(i + 1) + '_' + str(j),\
+#                  self.input_channels, self.output_channels, 1, nonlinear = False, batchnorm = False, dropout = dropout,\
+#                  dropout_prob = dropout_prob, uc = uc, device = self.device).to(self.device) for j in range(self.num_reps)])
+#             else:
+#                 self.model_list.append([FCN(model_name + "_layer_" + str(i + 1) + '_' + str(j),\
+#                  self.input_channels, self.input_channels, 1, nonlinear = True, batchnorm = False, dropout = dropout,\
+#                  dropout_prob = dropout_prob, uc = uc, device = self.device).to(self.device) for j in range(self.num_reps)])
+
+#     def set_uc(self, uc_bool):
+#         for model_list in self.model_list:
+#             for small_model in model_list:
+#                 if hasattr(small_model, 'uc'):
+#                     small_model.uc = uc_bool
+
+#     def forward(self, x):
+#         for i, model_list in enumerate(self.model_list):
+#             if i == 0 and self.num_layers == 1:
+#                 output = random.choice(model_list)(x)
+#             elif i == 0 and self.num_layers != 1:
+#                 output = random.choice(model_list)(x) + x
+#                 residual = output.clone()
+
+#             elif i == len(self.model_list) - 1:
+#                 output = random.choice(model_list)(output)
+#             else:
+#                 output = random.choice(model_list)(output) + residual
+#                 residual = output.clone()
+                
+#         return output
+
 

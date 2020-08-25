@@ -20,7 +20,7 @@ from collections import OrderedDict
 ##############################################
 def get_loss_and_eval_dict():
     loss_dict = {
-        'MSE': Proto_Loss(nn.MSELoss(reduction = "none")),
+        'L2': Proto_Loss(nn.MSELoss(reduction = "none")),
         'L1': Proto_Loss(nn.L1Loss(reduction = "none")),
         'L1_Ensemble': Proto_Loss_Ensemble(nn.L1Loss(reduction = "none")),
         'Multinomial_NLL': Proto_Loss(nn.CrossEntropyLoss(reduction = "none")),
@@ -29,10 +29,12 @@ def get_loss_and_eval_dict():
         # 'Weighted_Multinomial_NLL_Ensemble': Proto_Loss_Ensemble(nn.CrossEntropyLoss(weight = torch.tensor([1,1500]).float().to(self.device), reduction = "none")),
         'Binomial_NLL': Proto_Loss(nn.BCEWithLogitsLoss(reduction = "none")),
         'Multinomial_Entropy': Proto_Loss(multinomial.inputs2ent),
+        'Neg_Multinomial_Entropy': Proto_Loss(multinomial.inputs2neg_ent),
         'Multinomial_KL': Proto_Loss(multinomial.inputs2KL),
         'Multinomial_KL_Ensemble': Proto_Loss_Ensemble(multinomial.inputs2KL),
         'Gaussian_NLL': Proto_Loss(gaussian.negative_log_likelihood),
         'Gaussian_KL': Proto_Loss(gaussian.divergence_KL),
+        'Neg_Gaussian_Entropy': Proto_Loss(gaussian.negative_entropy),
         'Identity_Loss': Proto_Loss(identity_loss),
     }
 
@@ -87,9 +89,7 @@ class Proto_Metric(object):
         self.metric_names = tuple(metric_names)
 
     def measure(self, input_tuple, logging_dict, label, eval_dict):
-        net_est, target = input_tuple
-
-        measurements = self.metric(net_est, target)
+        measurements = self.metric(*input_tuple)
 
         for i, metric_name in enumerate(self.metric_names):
             if type(measurements) == tuple:
@@ -104,14 +104,12 @@ class Proto_Loss(object):
         self.loss_function = loss_function
 
     def forward(self, input_tuple, logging_dict, label, loss_dict):
-        net_est, target = input_tuple
-
         if 'weight' in loss_dict.keys():
             weight = loss_dict['weight']
         else:
             weight = 1.0
 
-        loss = weight * self.loss_function(net_est, target).mean()
+        loss = weight * self.loss_function(*input_tuple).mean()
 
         logging_dict['scalar'][label + "/loss"] = loss.item()
 

@@ -71,7 +71,11 @@ def inputs2KL(inputs0, inputs1):
 
 def inputs2ent(inputs): # from a multinomial distribution
     probs, logprobs = inputs[0], inputs[1]
-    return torch.where(probs != 0, -1.0 * probs * torch.log(probs), torch.zeros_like(probs)).sum(-1)
+    return torch.where(probs != 0, -1.0 * probs * logprobs, torch.zeros_like(probs)).sum(-1)
+
+def inputs2neg_ent(inputs): # from a multinomial distribution
+    probs, logprobs = inputs[0], inputs[1]
+    return torch.where(probs != 0, 1.0 * probs * logprobs, torch.zeros_like(probs)).sum(-1)
 
 def inputs2acc(inputs, labels):
     probs, logprobs = inputs[0], inputs[1]
