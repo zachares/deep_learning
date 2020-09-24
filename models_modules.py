@@ -493,23 +493,23 @@ class FCN(Proto_Model):
 
 #         return self.model(x, (h, c))
 
-# # class Transformer(Proto_Model):
 # class Transformer(Proto_Model):
-#     def __init__(self, model_name, input_size, num_enc_layers, num_dec_layers,\
-#      norm = None, nhead = 8, dim_feedforward = 2048, dropout = 0.1, activation = 'relu', device = None):
-#         super().__init__(model_name + "_transformer", device = device)
+class Transformer(Proto_Model):
+    def __init__(self, model_name, input_size, num_enc_layers, num_dec_layers,\
+     norm = None, nhead = 8, dim_feedforward = 2048, dropout = 0.1, activation = 'relu', device = None):
+        super().__init__(model_name + "_transformer", device = device)
 
-#         self.device = device
-#         self.input_size = input_size
-#         self.num_enc_layers = num_enc_layers
-#         self.num_dec_layers = num_dec_layers
+        self.device = device
+        self.input_size = input_size
+        self.num_enc_layers = num_enc_layers
+        self.num_dec_layers = num_dec_layers
 
-#         self.model = nn.Transformer(self.input_size, nhead=nhead, num_encoder_layers=self.num_enc_layers,\
-#          num_decoder_layers=self.num_dec_layers, dim_feedforward=dim_feedforward,\
-#           dropout=dropout, activation=activation)
+        self.model = nn.Transformer(self.input_size, nhead=nhead, num_encoder_layers=self.num_enc_layers,\
+         num_decoder_layers=self.num_dec_layers, dim_feedforward=dim_feedforward,\
+          dropout=dropout, activation=activation)
 
-#     def forward(self, source, targ):
-#         return self.model(source, targ)
+    def forward(self, source, targ, src_key_padding_mask = None, tgt_key_padding_mask = None):
+        return self.model(source, targ, src_key_padding_mask = src_key_padding_mask, tgt_key_padding_mask = tgt_key_padding_mask)
 
 # class Transformer_Encoder(Proto_Model):
 #     def __init__(self, model_name, load_name, input_size, num_layers,\
@@ -651,7 +651,7 @@ class ResNetFCN(Proto_Macromodel):
         self.num_layers = num_layers
         self.model_list = []
 
-        assert input_channels > output_channels
+        assert (input_channels > output_channels) or (input_channels >= 64)
 
         for i in range(self.num_layers):
             if i == self.num_layers - 1:

@@ -91,33 +91,30 @@ def params2error_metric(input_tuple):
     else:
         raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
 
-def divergence_KL(input_tuple):
-    dis0, dis1 = input_tuple
+def divergence_KL(dis0, dis1):
     means0, precs0 = dis0
     means1, precs1 = dis1
 
-    num_size_dims = len(list(prec0.size()))
+    num_size_dims = len(list(precs0.size()))
 
     if num_size_dims == 1:
-        return 0.5 * (torch.log(prec0) - torch.log(prec1) + prec1 / prec0 + prec1 * (mean0 - mean1).pow(2) - 1)
+        return 0.5 * (torch.log(precs0) - torch.log(precs1) + precs1 / precs0 + precs1 * (means0 - means1).pow(2) - 1)
     elif num_size_dims == 2:
-        return 0.5 * (torch.log(prec0.prod(1)) - torch.log(prec1.prod(1)) - prec1.size(1) + (prec1 / prec0).sum(1) + (prec1 * (mean0 - mean1).pow(2)).sum(1))
+        # prec.prod(1) = determinant of a diagonal precision matrix
+        return 0.5 * (torch.log(precs0) - torch.log(precs1) + precs1 / precs0 + precs1 * (means0 - means1).pow(2) - 1).sum(-1)
+
     elif num_size_dims == 3:
-        if prec0.size(1) == 3:
-            prec_det0 = _det3(prec0)
-            prec_det1 = _det3(prec1)
-        else:
-            prec_det0 = torch.det(prec0)
-            prec_det1 = torch.det(prec1)
+        precs_det0 = torch.det(precs0)
+        precs_det1 = torch.det(precs1)
 
-        prec0_inv = torch.inverse(prec0)
-        prec_mult = torch.bmm(prec1, prec0_inv)
+        precs0_inv = torch.inverse(precs0)
+        precs_mult = torch.bmm(precs1, precs0_inv)
 
-        prec_mult_trace = torch.diagonal(prec_mult, dim1=1, dim2=2).sum(1)
+        precs_mult_trace = torch.diagonal(precs_mult, dim1=1, dim2=2).sum(1)
 
         mean_error = (mean1 - mean0).unsqueeze(2)
 
-        return 0.5 * (torch.log(prec0_det/prec1_det) + prec_mult_trace + torch.bmm(torch.bmm(mean_error.transpose(1,2), prec1), mean_error).squeeze())
+        return 0.5 * (torch.log(precs0_det/precs1_det) + precs_mult_trace + torch.bmm(torch.bmm(mean_error.transpose(1,2), precs1), mean_error).squeeze())
     else:
         raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
 
