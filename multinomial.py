@@ -6,20 +6,6 @@ import torch.nn.functional as F
 
 EPS = 1e-6
 
-# converting logits to dirichlet distribution
-def logits2dirprobs(logits):
-    num_size_dims = len(list(logits.size()))
-    weights = F.relu(logits) + 1.0
-
-    if num_size_dims == 1:
-        probs = weights / weights.sum(0).unsqueeze(0).repeat_interleave(weights.size(0), dim = 0)
-    elif num_size_dims == 2:
-        probs = weights / weights.sum(1).unsqueeze(1).repeat_interleave(weights.size(1), dim = 1)
-
-    # print(probs)
-
-    return probs
-
 def logits2inputs(logits):
     num_size_dims = len(list(logits.size()))
 
@@ -47,16 +33,10 @@ def probs2inputs(probs):
 def logits2probs(logits):
     num_size_dims = len(list(logits.size()))
 
-    if num_size_dims == 1:
-        probs = F.softmax(logits, dim = 0)
-        probs = torch.where(probs !=0, probs, EPS * torch.ones_like(probs))
-        probs = probs / probs.sum(0).unsqueeze(0).repeat_interleave(probs.size(0), dim = 0)
-        return probs        
+    if num_size_dims == 1: 
+        return F.softmax(logits, dim = 0)        
     elif num_size_dims == 2:
-        probs = F.softmax(logits, dim = 1)
-        probs = torch.where(probs !=0, probs, EPS * torch.ones_like(probs))
-        probs = probs / probs.sum(1).unsqueeze(1).repeat_interleave(probs.size(1), dim = 1)
-        return probs
+        return F.softmax(logits, dim = 1)
     else:
         raise Exception("estimates tensor size invalid with number of dimensions " + str(num_size_dims))
 

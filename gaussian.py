@@ -6,26 +6,23 @@ def _logprobs(means, prec, samples):
     num_size_dims = len(list(prec.size()))
 
     if num_size_dims == 1: # univariate
-        return -0.5 * (prec * (samples - means).pow(2) + (np.log(2 * np.pi) - torch.log(prec)))
+        return 0.5 * (torch.log(prec) - prec * (samples - means).pow(2) - (np.log(2 * np.pi)))
     elif num_size_dims == 2: # diagonal covariance
-        return -0.5 * (prec * (samples - means).pow(2) + (np.log(2 * np.pi) - torch.log(prec))).sum(-1)
-    elif num_size_dims == 3: # full covaraince matrix
-        if prec.size(1) == 3:
-            prec_det = det3(prec)
-        else:
-            prec_det = torch.det(prec)
+        return 0.5 * (torch.log(prec) - prec * (samples - means).pow(2) - np.log(2 * np.pi)).sum(-1) 
+    # elif num_size_dims == 3: # full covaraince matrix
+    #     prec_det = torch.det(prec)
 
-        log_prob_const = 0.5 * torch.log(prec_det) - prec.size(1) * np.log(2 * np.pi)
-        err = (samples - means).unsqueeze(1) 
-        log_prob_sample = -0.5 * torch.bmm(torch.bmm(err, prec), err.transpose(1,2))
+    #     log_prob_const = 0.5 * torch.log(prec_det) - prec.size(1) * np.log(2 * np.pi)
+    #     err = (samples - means).unsqueeze(1) 
+    #     log_prob_sample = -0.5 * torch.bmm(torch.bmm(err, prec), err.transpose(1,2))
 
-        return log_prob_const + log_prob_sample
+    #     return log_prob_const + log_prob_sample
     else:
         raise Exception("estimates tensor size invalid with number of dimensions" + str(num_size_dims))
 
 def negative_log_likelihood(params, labels):
     means, precs = params
-    return -1.0 * _logprobs(means, precs, labels).sum(-1)
+    return -1.0 * _logprobs(means, precs, labels)
 
 def negative_entropy(params, labels):
     means, precs = params

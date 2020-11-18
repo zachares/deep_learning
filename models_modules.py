@@ -593,8 +593,9 @@ call the ProtoMacromodel as a superclass
 '''
 #### super class for models of models for logging and loading models
 class Proto_Macromodel(nn.Module):
-    def __init__(self):
-        super().__init__()   
+    def __init__(self, model_name):
+        super().__init__()
+        self.model_name = model_name   
         self.model_list = []
         self.parallel = False
 
@@ -642,7 +643,7 @@ class Proto_Macromodel(nn.Module):
 
 class ResNetFCN(Proto_Macromodel):
     def __init__(self, model_name, input_channels, output_channels, num_layers, dropout = True, dropout_prob = 0.5, uc = False, device = None):
-        super().__init__()
+        super().__init__(model_name)
         self.device = device
         self.input_channels = input_channels
         self.save_bool = True
