@@ -158,9 +158,9 @@ def train_using_supervised_learning(cfg, model_dict, data_loader, val_data_loade
 
                 logger.save_images2D(logging_dict, val_global_cnt, 'val/')
 
-            ###############################################
-            ##### Saving models every epoch ################
-            ##############################################
+            ####################################################
+            ##### Saving models at specified epoch interval ####
+            ####################################################
             if save_model_flag and i_epoch == 0:
                 if os.path.isdir(logger.logging_folder) == False:
                     os.mkdir(logger.logging_folder)
