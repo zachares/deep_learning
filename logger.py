@@ -42,40 +42,21 @@ class Logger(object):
 		with open("run_tracking.yml", 'w') as ymlfile1:
 			yaml.dump(load_cfg, ymlfile1)
 
-		self.runs_folder = ""
-		self.models_folder = ""
-
 		if self.debugging_flag == False or save_model_flag:
-
 			run_tracking_num = load_cfg['run_tracker'][run_description]
 
 			if os.path.isdir(logging_folder) == False:
 				os.mkdir(logging_folder)
 
-			if self.debugging_flag == False:
-				if os.path.isdir(logging_folder + 'runs/') == False:
-					os.mkdir(logging_folder + 'runs/')
+			self.logging_folder = logging_folder + date + "_"+ run_description +\
+				 "_" + str(run_tracking_num) + trial_description + "/"
 
-				self.runs_folder = logging_folder + 'runs/' + date + "_"+ run_description + "_" +\
-				str(run_tracking_num) + trial_description + "/"
+			if os.path.isdir(self.logging_folder) == False:
+				os.mkdir(self.logging_folder)
 
-				print("Runs folder: ", self.runs_folder)    
-
-				os.mkdir(self.runs_folder)
-			
-			if save_model_flag:
-				if os.path.isdir(logging_folder + 'models/') == False:
-					os.mkdir(logging_folder + 'models/')
-
-				self.models_folder = logging_folder + 'models/' + date + "_"+ run_description + "_" +\
-				str(run_tracking_num) + trial_description + "/"
-
-				os.mkdir(self.models_folder)
-				# print("Model Folder:  ", self.models_folder)
-				# self.save_dict("learning_params", cfg, True)
-				# self.save_dict("learning_params", cfg, True, folder = self.models_folder)
+			print("Logging and Model Saving Folder: ", self.logging_folder)
 				
-			self.writer = SummaryWriter(self.runs_folder)
+			self.writer = SummaryWriter(self.logging_folder)
 
 	def save_scalars(self, logging_dict, iteration, label):
 		if self.debugging_flag == False and len(logging_dict['scalar'].keys()) != 0:
@@ -86,7 +67,7 @@ class Logger(object):
 	def save_dict(self, name, dictionary, yml_bool, folder = None):
 		if self.debugging_flag == False:
 			if folder == None:
-				save_folder = self.runs_folder
+				save_folder = self.logging_folder
 			else:
 				save_folder = folder
 

@@ -112,11 +112,9 @@ def train_using_supervised_learning(cfg, model_dict, data_loader, val_data_loade
     prev_time = time.time()
 
     if save_model_flag:
-        logger.save_dict("val_train_split", data_loader.dataset.idx_dict, False)
-        logger.save_dict("val_train_split", data_loader.dataset.idx_dict, False, folder = logger.models_folder)
-        logger.save_dict("learning_params", cfg, True)
-        logger.save_dict("learning_params", cfg, True, folder = logger.models_folder)
-        trainer.save(i_epoch, logger.models_folder)
+        logger.save_dict("val_train_split", data_loader.dataset.idx_dict, False, folder = logger.logging_folder)
+        logger.save_dict("learning_params", cfg, True, folder = logger.logging_folder)
+        trainer.save(i_epoch, logger.logging_folder)
 
     if not test_run:
         for i_epoch in range(max_epoch):
@@ -164,12 +162,12 @@ def train_using_supervised_learning(cfg, model_dict, data_loader, val_data_loade
             ##### Saving models every epoch ################
             ##############################################
             if save_model_flag and i_epoch == 0:
-                if os.path.isdir(logger.models_folder) == False:
-                    os.mkdir(logger.models_folder)
-                trainer.save(i_epoch, logger.models_folder)
+                if os.path.isdir(logger.logging_folder) == False:
+                    os.mkdir(logger.logging_folder)
+                trainer.save(i_epoch, logger.logging_folder)
 
             elif save_model_flag and (i_epoch % save_val_interval) == 0:
-                trainer.save(i_epoch, logger.models_folder)
+                trainer.save(i_epoch, logger.logging_folder)
 
     else:
         print("Starting Testing")
