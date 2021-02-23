@@ -52,7 +52,7 @@ def train_nn_models(cfg : dict,
     ### Setting Debugging Flag and Save Model Flag ###
     ### and Setting up Logging if Required         ###
     ################################################## 
-    var = input("Run code in debugging mode? If yes, no Results will be "
+    var = input("\nRun code in debugging mode? If yes, no Results will be "
                 "saved.[y/n]: ")
     if var == "y":
         logging_flag = False
@@ -68,7 +68,7 @@ def train_nn_models(cfg : dict,
     else:
         print("Logging results of training")
 
-    var = input("Train models without saving?[y/n]: ")
+    var = input("\nTrain models without saving?[y/n]: ")
     if var == "y":
         save_model_flag = False
     elif var == "n":
@@ -78,7 +78,7 @@ def train_nn_models(cfg : dict,
                         + "determine whether to save models")
 
     if save_model_flag or logging_flag:
-        var = input("Every how many epochs would you like to test the"
+        var = input("\nEvery how many epochs would you like to test the"
                     " model on the validation set and/or save it?[1,2,...,1000,...,inf]:")
         save_val_interval = int(var)
         print("Validating and saving every ", save_val_interval, " epochs")

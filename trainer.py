@@ -64,14 +64,14 @@ class Trainer(object):
         self.opt_dict = {}
         for key in self.model_dict.keys():
             if self.info_flow[key]["train"] == 1:
-                print("Training " , key)
+                print("\nTraining " , key, "\n")
                 parameters_list = list(self.model_dict[key].parameters())
                 self.opt_dict[key] = optim.Adam(parameters_list,
                                                 lr=train_dict['lrn_rate'],
                                                 betas=(train_dict['beta1'], train_dict['beta2']),
                                                 weight_decay = train_dict['regularization_weight'])
             else:
-                print("Not Training ", key)
+                print("\nNot Training ", key, "\n")
 
     def train(self, sample_batched : Dict[str, torch.Tensor]):
         """ Performs a training step for the models in the instances

@@ -128,7 +128,7 @@ class CustomDataset(Dataset):
         print("Total data points: ", self.train_length + self.val_length)
         print("Total training points: ", self.train_length)
         print("Total validation points: ", self.val_length)
-        print("Total development points: ", self.dev_length)
+        print("Total development points: ", self.dev_length, "\n")
 
     def __len__(self) -> int:
         """ Returns the number of points in the data set

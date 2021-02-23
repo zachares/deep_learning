@@ -14,7 +14,7 @@ import example_models as em
 
 import multinomial as multinomial
 import torch
-
+import matplotlib
 
 def testing_example():
     """ Tests a network's ability to classify images in the CIFAR-10

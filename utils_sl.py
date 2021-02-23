@@ -16,7 +16,7 @@ import multinomial
 import gaussian
 import models_modules as mm
 from collections import OrderedDict
-from sklearn.manifold import TSNE
+# from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt 
 
 from typing import Tuple, Dict, List
