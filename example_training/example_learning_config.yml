@@ -1,0 +1,51 @@
+# absolute path to dataset folder
+dataset_path: "../cifar_10_dataset"
+
+dataloading_params:
+  num_workers: 4
+  batch_size: 128
+  idx_dict_path: 
+
+training_params:
+  seed: 4321
+  regularization_weight: 0.00001
+  lrn_rate: 0.0001
+  beta1: 0.9
+  beta2: 0.99
+  max_training_epochs: 10000
+  val_ratio: 0.05
+  dev_num: 20 # number of datapoints in the development set
+  use_dev: False
+  use_GPU: True
+
+logging_params:
+  # Place your logging dir in a seperate location then your local code repository
+  logging_dir: /home/ubuntu/src/example_logging/
+  run_notes: system_test
+
+info_flow:
+  Cifar10Classifier:
+    train: 1
+    model_dir:
+    epoch: 0
+    init_args:
+      image_size: [3,32,32]
+      encoding_size: [64,1,1]
+      num_resnet_layers: 3
+    inputs:
+      image: dataset
+    losses:
+      Multinomial_NLL:
+        logging_name: Cross_Entropy_loss
+        weight: 1.0
+        inputs:
+          class_logits: Cifar10Classifier
+          class_idx: dataset
+    evals:
+      Multinomial_Accuracy:
+        logging_name: Classification_Accuracy
+        inputs:
+          class_logits: Cifar10Classifier
+          class_idx: dataset
+
+

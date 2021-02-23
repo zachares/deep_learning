@@ -11,24 +11,13 @@ import numpy as np
 import utils_sl as sl
 from typing import List, Tuple, Dict
 
-####################################
-### Custom Neural Network Layers ###
-####################################
-class Flatten(nn.Module):
-    """ A class which transforms any tensor with a rank >=2 to a tensor
-        of rank 2 without mixing the values between data points in a 
-        batch. It can be used as a layer in a ModuleWrapper (see below)
-    """
-    def forward(self, inputs):
-        return inputs.view(inputs.size(0), -1)
-
 ##########################################
 ### Multi-layer Neural Network Modules ###
 ##########################################
 class ModuleWrapper(nn.Module):
     """ a super class / wrapper for all multi-layer neural network 
-        models with integrated methods for loading, saving and returning
-        the parameters in the model.
+        modules with integrated methods for loading, saving and returning
+        the parameters in the module.
 
         Attributes:
             model_name: a string with the model name of neural network
@@ -44,6 +33,11 @@ class ModuleWrapper(nn.Module):
         self.model_name = model_name
         self.device = device
         # self.parallel = False
+
+    def set_device(self, device):
+        """ sets the device of the model """
+        self.device = device
+        self.model = self.model.to(self.device)
 
     def forward(self, inputs : torch.Tensor) -> torch.Tensor:
         """ Returns the output of the module given a compatible input """
@@ -934,6 +928,12 @@ class ModelWrapper(nn.Module):
         self.model_name = model_name   
         self.device = device
         # self.parallel = False
+    
+    def set_device(self, device):
+        """ Sets the device of the modules within the model """
+        self.device = device
+        for model in self._modules.values():
+            model.set_device(self.device)
     
     def save(self, epoch_num : int, model_dir : str):
         """ Saves all the neural network modules in the model to a 

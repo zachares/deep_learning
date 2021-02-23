@@ -1,0 +1,8 @@
+testing_params:
+  use_GPU: True
+  seed: 4321
+info_flow:
+  Cifar10Classifier:
+    train: 0
+    model_dir: example_trained_model/
+    epoch: 500

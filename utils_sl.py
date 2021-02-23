@@ -36,21 +36,21 @@ def get_loss_and_eval_dict() -> Tuple[dict]:
         'L2': LossWrapper(nn.MSELoss(reduction = "none"), "L2orMSE"),
         'L1': LossWrapper(nn.L1Loss(reduction = "none"), "L1"),
         'L1_Ensemble': LossWrapperEnsemble(nn.L1Loss(reduction = "none"), "L1_Ensemble"),
-        'Multinomial_NLL': LossWrapper(nn.CrossEntropyLoss(reduction = "none"), "CrossEenTorMultinomial_NLL"),
-        'Binomial_NLL': LossWrapper(nn.BCEWithLogitsLoss(reduction = "none"), "BinaryCrossEnTorBinomial_NLL"),
-        'Multinomial_Entropy': LossWrapper(multinomial.inputs2ent, "Multinomial_Entropy"),
-        'Multinomial_KL': LossWrapper(multinomial.inputs2KL, "Multinomial_KL"),
-        'Multinomial_KL_Ensemble': LossWrapperEnsemble(multinomial.inputs2KL, "Multinomial_KL_Ensemble"),
+        'Multinomial_NLL': LossWrapper(nn.CrossEntropyLoss(reduction = "none"), "Multinomial_NLL"),
+        'Binomial_NLL': LossWrapper(nn.BCEWithLogitsLoss(reduction = "none"), "Binomial_NLL"),
+        'Multinomial_Entropy': LossWrapper(multinomial.logits2ent, "Multinomial_Entropy"),
+        'Multinomial_KL': LossWrapper(multinomial.logits2KL, "Multinomial_KL"),
+        'Multinomial_KL_Ensemble': LossWrapperEnsemble(multinomial.logits2KL, "Multinomial_KL_Ensemble"),
         'Gaussian_NLL': LossWrapper(gaussian.negative_log_likelihood, "Gaussian_NLL"),
         'Gaussian_KL': LossWrapper(gaussian.divergence_KL, "Gaussian_KL"),
         'Identity_Loss': LossWrapper(identity_function, "Identity_Loss"),
     }
 
     eval_dict = {
-        'Multinomial_Accuracy': EvalMetricWrapper(multinomial.inputs2acc, "accuracy"),
-        'Multinomial_Accuracy_Ensemble': EvalMetricWrapperEnsemble(multinomial.inputs2acc, "accuracy"),
-        'Multinomial_Entropy': EvalMetricWrapper(multinomial.inputs2acc, "entropy"),
-        'Multinomial_Entropy_Ensemble': EvalMetricWrapperEnsemble(multinomial.inputs2acc, "entropy"),
+        'Multinomial_Accuracy': EvalMetricWrapper(multinomial.logits2acc, "accuracy"),
+        'Multinomial_Accuracy_Ensemble': EvalMetricWrapperEnsemble(multinomial.logits2acc, "accuracy"),
+        'Multinomial_Entropy': EvalMetricWrapper(multinomial.logits2ent, "entropy"),
+        'Multinomial_Entropy_Ensemble': EvalMetricWrapperEnsemble(multinomial.logits2ent, "entropy"),
         'Continuous_Accuracy': EvalMetricWrapper(continuous2accuracy, "average_accuracy"),
         'Continuous_Error_Mag': EvalMetricWrapper(continuous2error_mag, "average_error_mag"),
         'Continuous_Accuracy_Ensemble': EvalMetricWrapperEnsemble(continuous2accuracy, "average_accuracy"),
@@ -88,6 +88,7 @@ def init_and_load_models(ref_model_dict : dict,
     for model_name in info_flow.keys():
         if info_flow[model_name]['model_dir'] is None:
             model_dict[model_name] = ref_model_dict[model_name](model_name, info_flow[model_name]['init_args'], device = device)
+            model_dict[model_name].set_device(device) 
 
         elif info_flow[model_name]['model_dir'][-3:] == 'pkl':
             data = torch.load(info_flow[model_name]['model_dir'])
@@ -99,12 +100,13 @@ def init_and_load_models(ref_model_dict : dict,
                 cfg2 = yaml.safe_load(ymlfile)
 
             model_dict[model_name] = ref_model_dict[model_name](model_name, cfg2['info_flow'][model_name]['init_args'], device = device)
+            model_dict[model_name].set_device(device) 
 
             model_dict[model_name].load(info_flow[model_name]['epoch'], info_flow[model_name]['model_dir'])
             model_dict[model_name].loading_dir = info_flow[model_name]['model_dir']
-            model_dict[model_name].loading_epoch = info_flow[model_name]['epoch']       
+            model_dict[model_name].loading_epoch = info_flow[model_name]['epoch']
 
-    print("Finished Initialization and Loading")
+    print("Finished Initialization and Loading\n")
     return model_dict
 
 class EvalMetricWrapper():
@@ -241,7 +243,6 @@ def init_dataloader(cfg : dict,
     batch_size = cfg['dataloading_params']['batch_size']
     num_workers = cfg['dataloading_params']['num_workers']
     idx_dict_path = cfg['dataloading_params']['idx_dict_path']
-    run_mode = cfg['training_params']['run_mode'] 
     val_ratio = cfg['training_params']['val_ratio']
 
     #### loading previous val_train split to continue training a model
@@ -259,16 +260,13 @@ def init_dataloader(cfg : dict,
     if val_ratio == 0:
         print("No validation set")
 
-    if run_mode == 0:
-        train_sampler = SubsetRandomSampler(range(dataset.dev_length))
-        dataset.dev_bool = True
-    else:
-        train_sampler = SubsetRandomSampler(range(dataset.train_length))
+
+    sampler = SubsetRandomSampler(range(dataset.train_length))
 
     data_loader = DataLoader(dataset,
                              batch_size = batch_size,
                              num_workers = num_workers,
-                             sampler = train_sampler,
+                             sampler = sampler,
                              pin_memory = True) 
 
     return data_loader
@@ -286,29 +284,29 @@ def save_as_pkl(name : str, dictionary : dict, save_dir : str):
         pickle.dump(dictionary, f, pickle.HIGHEST_PROTOCOL)
 
 # TODO: this function has not been debugged
-def calc_and_plot_tsne(points : np.ndarray, 
-                       labels : np.ndarray,
-                       log_dir : str):
-    """ Takes a set of high dimensional data points in a numpy array,
-        performs a tsne analysis on it (converting it to R2) and the 
-        plots a labelled graph of the results, saving the results as a png
+# def calc_and_plot_tsne(points : np.ndarray, 
+#                        labels : np.ndarray,
+#                        log_dir : str):
+#     """ Takes a set of high dimensional data points in a numpy array,
+#         performs a tsne analysis on it (converting it to R2) and the 
+#         plots a labelled graph of the results, saving the results as a png
 
-        See https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
-        for documentation on how to use TSNE
-    """   
-    tsne = TSNE(n_components=2,
-                perplexity = 30.0,
-                early_exaggeration = 12.0,
-                learning_rate = 200.0,
-                n_iter = 1000,
-                method='barnes_hut')
+#         See https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
+#         for documentation on how to use TSNE
+#     """   
+#     tsne = TSNE(n_components=2,
+#                 perplexity = 30.0,
+#                 early_exaggeration = 12.0,
+#                 learning_rate = 200.0,
+#                 n_iter = 1000,
+#                 method='barnes_hut')
 
-    print("Beginning TSNE")
-    Y = tsne.fit_transform(points)
-    print("Finished TSNE")
-    fig = plt.figure()
-    plt.scatter(Y[:,0], Y[:,1], c = labels)
-    plt.savefig("{}tsne_plot.png".format(log_dir))
+#     print("Beginning TSNE")
+#     Y = tsne.fit_transform(points)
+#     print("Finished TSNE")
+#     fig = plt.figure()
+#     plt.scatter(Y[:,0], Y[:,1], c = labels)
+#     plt.savefig("{}tsne_plot.png".format(log_dir))
 
 def get_2Dconv_params(input_size : Tuple[int], 
                       output_size : Tuple[int]) -> List[Tuple[int]]:

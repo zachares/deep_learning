@@ -1,0 +1,49 @@
+dataloading_params:
+  batch_size: 128
+  idx_dict_path: null
+  num_workers: 4
+dataset_path: ../cifar_10_dataset
+info_flow:
+  Cifar10Classifier:
+    epoch: 0
+    evals:
+      Multinomial_Accuracy:
+        inputs:
+          class_idx: dataset
+          class_logits: Cifar10Classifier
+        logging_name: Classification_Accuracy
+    init_args:
+      encoding_size:
+      - 64
+      - 1
+      - 1
+      image_size:
+      - 3
+      - 32
+      - 32
+      num_resnet_layers: 3
+    inputs:
+      image: dataset
+    losses:
+      Multinomial_NLL:
+        inputs:
+          class_idx: dataset
+          class_logits: Cifar10Classifier
+        logging_name: Cross_Entropy_loss
+        weight: 1.0
+    model_dir: null
+    train: 1
+logging_params:
+  logging_dir: /home/ubuntu/src/example_logging/
+  run_notes: system_test
+training_params:
+  beta1: 0.9
+  beta2: 0.99
+  dev_num: 20
+  lrn_rate: 0.0001
+  max_training_epochs: 10000
+  regularization_weight: 1.0e-05
+  seed: 4321
+  use_GPU: true
+  use_dev: false
+  val_ratio: 0.05

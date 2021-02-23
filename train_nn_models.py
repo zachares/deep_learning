@@ -142,8 +142,13 @@ def train_nn_models(cfg : dict,
     ################
     ### Training ###
     ################
+    # Counter of the total number of iterations / updates performed
     global_cnt = 0
+    # Counter of the total number of validation iterations performed
+    val_cnt = 0
+    # Counter of the number of epochs that have passed
     i_epoch = 0
+    
     prev_time = time.time()
 
     if save_model_flag or logging_flag:
@@ -168,17 +173,13 @@ def train_nn_models(cfg : dict,
         # Setting the dataloader to load from the training set
         data_loader.dataset.val_bool = False 
         data_loader.sampler.indices = range(len(data_loader.dataset))
-        # print(torch.cuda.memory_summary(device))
         for i_iter, sample_batched in enumerate(data_loader):
             # useful if you are training using a curriculum
-            # print(torch.cuda.memory_summary(device))
             sample_batched['epoch'] = torch.from_numpy(np.array([[i_epoch]])).float()
             sample_batched['iteration'] = torch.from_numpy(np.array([[i_iter]])).float()
 
             # training step
             trainer.train(sample_batched)
-
-            global_cnt += 1
             
             # logging step
             # FIXME: magic number used to choose when to log image metrics
@@ -187,6 +188,8 @@ def train_nn_models(cfg : dict,
                     logger.log_results(global_cnt, 'train/', save_image=True)
                 else:
                     logger.log_results(global_cnt, 'train/')
+            
+            global_cnt += 1
 
         ##################
         ### Validation ###
@@ -207,14 +210,16 @@ def train_nn_models(cfg : dict,
                 trainer.eval(sample_batched)
 
                 # logging step
-                if logging_flag: logger.log_results(global_cnt + i_iter, 'val/')
+                if logging_flag: logger.log_results(val_cnt, 'val/')
+
+                val_cnt += 1
 
             # logging step
             if logging_flag:
                 # to stop double logging of scalar results
                 logger.logging_dict['scalar'] = {}
                 # logging images from validation run
-                logger.log_results(global_cnt + i_iter, 'val/', save_image=True)
+                logger.log_results(val_cnt, 'val/', save_image=True)
 
         # saving models at specified epoch interval ####
         if save_model_flag and ((i_epoch + 1) % save_val_interval) == 0:

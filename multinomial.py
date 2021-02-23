@@ -123,10 +123,111 @@ def inputs2acc(inputs, samples):
                        torch.ones_like(samples),
                        torch.zeros_like(samples)).float()
 
-# def inputs2gap(inputs, labels):
-#     entropy = inputs2ent(inputs)
-#     entropy_sorted, indices = torch.sort(entropy, dim = 0)
+def logits2acc(logits : torch.Tensor, 
+               samples : torch.Tensor) -> torch.Tensor:
+    """ Calculates and Returns the accuracy of a classification based 
+        on a batch of logits using a batch of samples. Please see 
+        the function inputs2acc to see how the accuracy is calculated
+    """
+    return inputs2acc(logits2inputs(logits), samples)
 
-#     ent_diff = entropy_sorted[1:] - entropy_sorted[:-1]
+def logits2ent(logits : torch.Tensor) -> torch.Tensor:
+    """ Calculates and Returns the entropies for a batch of multinomial 
+        distributions which are described by a set of logits. Please see
+        the function inputs2ent to see how the entropy is calculated.
+    """
+    return inputs2ent(logits2inputs(logits))
 
-#     return torch.max(ent_diff) - torch.min(ent_diff)
+def logits2KL(logits0 : torch.Tensor,
+              logits1 : torch.Tensor) -> torch.Tensor:
+    """ Calculates and Returns the KL divergence between two batches of
+        multinomial distributions represented by logits. Please see
+        the function inputs2KL to see how the KL divergence is calculated.
+    """
+    return inputs2KL(logits2inputs(logits0), logits2inputs(logits1))
+
+def print_histogram(probs : torch.Tensor, 
+                    labels : list,
+                    direction : bool = False,
+                    histogram_height : int = 5):
+    """ Prints a block representation of a histogram to the user's terminal.
+
+        Args:
+            probs: the value of each bin in the histogram. This function
+            assumes that all values should be normalized to a maximum
+            to have a maximum magnitude of 1.0.
+
+            labels: a list of strings, one for each bin, which act as
+            labels in the print out. 
+
+            direction: a boolean which indicates whether a bin's value
+            can be both negative or positive or just positive. 
+
+            histogram_height: the maximum number of rows used in the
+            printed histogram, i.e. if the first bin has a value of 1.0
+            and the histogram height is 10, then this function will 
+            print out a bar which takes up 10 rows in the terminal
+    """
+    block_length = 10 # magic number
+    fill = "#"
+    line = "-"
+    gap = " "
+    num_labels = len(labels)
+
+    probs_clipped = torch.clamp(probs, -1, 1)
+
+    counts = torch.round(probs_clipped * histogram_height).squeeze()
+
+    if direction:
+        lower_bound = -histogram_height-1
+    else:
+        lower_bound = 0
+
+    for line_idx in range(histogram_height, lower_bound, -1):
+        string = "   "
+
+        for i in range(num_labels):
+            count = counts[i]
+
+            if count < line_idx and line_idx > 0:
+                string += block_length * gap
+                string += 3 * gap
+            elif count >= line_idx and line_idx > 0:
+                string += block_length * fill
+                string += 3 * gap
+            elif line_idx == 0:
+                string += block_length * line
+                string += 3 * line
+            elif count >= line_idx and line_idx < 0:
+                string += block_length * gap
+                string += 3 * gap
+            else:
+                string += block_length * fill
+                string += 3 * gap
+
+        print(string)
+
+    string = "   "
+
+    for label in labels:
+        remainder = block_length - len(label)
+
+        if remainder % 2 == 0:
+            offset = int(remainder / 2)
+            string += ( offset * line + label + offset * line)
+        else:
+            offset = int((remainder - 1) / 2)
+            string += ( (offset + 1) * line + label + offset * line)
+
+        string += "   "
+
+    print(string)
+
+    string = "   "
+
+    for i in range(num_labels):
+        string += (block_length * line)
+        string += "   "
+
+    print(string)
+    print("\n")

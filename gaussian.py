@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch.distributions import Normal
 from typing import Tuple
 
 def logprobs(means: torch.Tensor,
@@ -40,7 +41,7 @@ def logprobs(means: torch.Tensor,
             based on the inputted Gaussian parameters
         
         Raises:
-            ValueError: if the rank of the inputted prec torch.Tensor 
+            ValueError: if the rank of the argument prec torch.Tensor 
             does not match any of the ranks the function is compatible with
     """
     # Calculates the rank of the precision tensor
@@ -190,13 +191,13 @@ def sample(means: torch.Tensor,
             input batch of distributions
     """
     # Calculates the rank of the precision matrices tensor
-    num_size_dims = len(list(prec.size()))
+    num_size_dims = len(list(precs.size()))
     
     # the reparametrization trick for a univariate Gaussian distribution
     if num_size_dims == 1 or num_size_dims == 2:
-        variance = 1 / (F.softplus(prec) + 1e-8)
-        epsilon = Normal(0, 1).sample(mean.size())
-        return mean + torch.sqrt(variance) * epsilon.to(device)
+        variance = 1 / (F.softplus(precs) + 1e-8)
+        epsilon = Normal(0, 1).sample(means.size())
+        return means + torch.sqrt(variance) * epsilon.to(device)
     elif num_size_dims == 3:
         raise ValueError("multivariate Gaussian\
             Distributions are not currently supported")        
@@ -229,7 +230,7 @@ def output2params(params: torch.Tensor) -> Tuple[torch.Tensor]:
     num_size_dims = len(list(params.size()))
 
     if num_size_dims == 2:
-        means, precs_unprocessed = torch.split(h, h.size(1) // 2, dim=1) 
+        means, precs_unprocessed = torch.split(params, params.size(1) // 2, dim=1) 
         return means, precs_unprocessed.pow(2)
     else:
         raise ValueError("params tensor has a rank of {}, which is not\
