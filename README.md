@@ -10,6 +10,8 @@ This repository provides a general template for training neural networks, where 
 
 In addition, logging training results is integrated into the training process with a Logger class and by providing wrappers for evaluation and loss functions. Saving and loading models is also integrated into the training and testing process by providing wrappers for nn.Modules and models composed of multiple nn.Modules.
 
+This repository also provides a number of heuristics to define the architecture of specific neural network types like convolutional neural networks so generating a new neural network module can be done by specifying the required input and output sizes of the tensors being fed through the network. This means that a user does not have to define the parameters for each convolutional layer in the network which can be a tedious process.
+
 ## Getting started
 
 If you are interested in using this repository for your own development. Please follow the instructions in the INSTALLATION.md markdown to install the package and its dependencies. I prefer this method of installation to using a requirements.txt file because those tend to contain a lot of packages which are not necessary to running the code and specify a specific version for each dependency even though it is not required.
