@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='supervised_learning',
+    name='deep_learning_developer',
     packages=find_packages(),
-    description='supervised learning pytorch library',
+    description='deep learning pytorch library for development',
     version="1.0",
 )
 
