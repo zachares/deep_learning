@@ -94,6 +94,7 @@ class CustomDataset(Dataset):
             self.idx_dict['val'] = {}
             self.idx_dict['train'] = {}
             self.idx_dict['dev'] = {}
+            self.idx_dict['idx_list'] = []
 
             self.idx_dict['idx_list'] = range(cifar_train_data.shape[0])
 
