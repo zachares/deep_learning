@@ -99,7 +99,7 @@ You want to modify the `__getitem__()` method, so that it loads all the inputs f
 
 Configuration files are used to define a training run. This is useful because if you have your data set and models already defined then training a model is as simple as editing a yml file instead of having to write out an entire program for training, logging and saving models. Unfortunately, training a neural network is a relatively complicated process, so the configuration file has a lot of parameters stored in it. Below, I added the annotated config file `example_learning_config.yml ` which has inline comments on the use of each parameter / component in the config file. I know there are a lot of parameters, but for the most part you will be keeping the parameters the same at the beginning of a new project. The main things that will need to be changed at the beginning of a project are `dataset_path`, `logging_dir` and the dictionary `info_flow`.
 
-```python 
+```yml 
 # the parameters required to define a data loader
 dataloading_params:
   # the path to where the data set for the project is stored
