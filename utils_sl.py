@@ -33,29 +33,29 @@ def get_loss_and_eval_dict() -> Tuple[dict]:
         but project specific losses can be added as well.
     """
     loss_dict = {
-        'L2': LossWrapper(nn.MSELoss(reduction = "none"), "L2orMSE"),
+        'L2': LossWrapper(nn.MSELoss(reduction = "none"), "L2 or MSE"),
         'L1': LossWrapper(nn.L1Loss(reduction = "none"), "L1"),
-        'L1_Ensemble': LossWrapperEnsemble(nn.L1Loss(reduction = "none"), "L1_Ensemble"),
-        'Multinomial_NLL': LossWrapper(nn.CrossEntropyLoss(reduction = "none"), "Multinomial_NLL"),
-        'Binomial_NLL': LossWrapper(nn.BCEWithLogitsLoss(reduction = "none"), "Binomial_NLL"),
-        'Multinomial_Entropy': LossWrapper(multinomial.logits2ent, "Multinomial_Entropy"),
-        'Multinomial_KL': LossWrapper(multinomial.logits2KL, "Multinomial_KL"),
-        'Multinomial_KL_Ensemble': LossWrapperEnsemble(multinomial.logits2KL, "Multinomial_KL_Ensemble"),
-        'Gaussian_NLL': LossWrapper(gaussian.negative_log_likelihood, "Gaussian_NLL"),
-        'Gaussian_KL': LossWrapper(gaussian.divergence_KL, "Gaussian_KL"),
-        'Identity_Loss': LossWrapper(identity_function, "Identity_Loss"),
+        'L1Ensemble': LossWrapperEnsemble(nn.L1Loss(reduction = "none"), "L1 Ensemble"),
+        'MultinomialNLL': LossWrapper(nn.CrossEntropyLoss(reduction = "none"), "Multinomial Negative Loglikelihood"),
+        'BinomialNLL': LossWrapper(nn.BCEWithLogitsLoss(reduction = "none"), "Binomial Negative Loglikelihood"),
+        'MultinomialEntropy': LossWrapper(multinomial.logits2ent, "MultinomialEntropy"),
+        'MultinomialKL': LossWrapper(multinomial.logits2KL, "Multinomial KL Divergence"),
+        'MultinomialKLEnsemble': LossWrapperEnsemble(multinomial.logits2KL, "Multinomial KL Divergence"),
+        'GaussianNLL': LossWrapper(gaussian.negative_log_likelihood, "Gaussian Negative Loglikelihood"),
+        'GaussianKL': LossWrapper(gaussian.divergence_KL, "Gaussian KL Divergence"),
+        'IdentityLoss': LossWrapper(identity_function, "Identity Loss"),
     }
 
     eval_dict = {
-        'Multinomial_Accuracy': EvalMetricWrapper(multinomial.logits2acc, "accuracy"),
-        'Multinomial_Accuracy_Ensemble': EvalMetricWrapperEnsemble(multinomial.logits2acc, "accuracy"),
-        'Multinomial_Entropy': EvalMetricWrapper(multinomial.logits2ent, "entropy"),
-        'Multinomial_Entropy_Ensemble': EvalMetricWrapperEnsemble(multinomial.logits2ent, "entropy"),
-        'Continuous_Accuracy': EvalMetricWrapper(continuous2accuracy, "average_accuracy"),
-        'Continuous_Error_Mag': EvalMetricWrapper(continuous2error_mag, "average_error_mag"),
-        'Continuous_Accuracy_Ensemble': EvalMetricWrapperEnsemble(continuous2accuracy, "average_accuracy"),
-        'Continuous_Error_Mag_Ensemble': EvalMetricWrapperEnsemble(continuous2error_mag, "average_error_mag"),
-        'Binomial_Accuracy': EvalMetricWrapper(binomial_accuracy, "binomial accuracy")
+        'MultinomialAccuracy': EvalMetricWrapper(multinomial.logits2acc, "Multinomial Accuracy"),
+        'MultinomialAccuracyEnsemble': EvalMetricWrapperEnsemble(multinomial.logits2acc, "Multinomial Accuracy"),
+        'MultinomialEntropy': EvalMetricWrapper(multinomial.logits2ent, "Multinomial Entropy"),
+        'MultinomialEntropyEnsemble': EvalMetricWrapperEnsemble(multinomial.logits2ent, "Multinomial Entropy"),
+        'ContinuousAccuracy': EvalMetricWrapper(continuous2accuracy, "Average Accuracy"),
+        'ContinuousErrorMag': EvalMetricWrapper(continuous2error_mag, "Average Error Magnitude"),
+        'ContinuousAccuracyEnsemble': EvalMetricWrapperEnsemble(continuous2accuracy, "Average Accuracy"),
+        'ContinuousErrorMagEnsemble': EvalMetricWrapperEnsemble(continuous2error_mag, "Average Error Magnitude"),
+        'BinomialAccuracy': EvalMetricWrapper(binomial_accuracy, "Binomial Accuracy")
     } 
 
     return loss_dict, eval_dict
