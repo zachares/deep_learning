@@ -59,7 +59,7 @@ class CustomDataset(Dataset):
     def __init__(self, 
                  cfg: dict,
                  idx_dict: dict = None):
-        """ Inits Custom Dataloader
+        """ Inits CustomDataSet
 
             All arguments are explained above in the attributes section 
             above except cfg. cfg is a dictionary containing the 
