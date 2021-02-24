@@ -58,6 +58,15 @@ python example_training.py
 ```
 `example_training.py` should run without issue (but requires user input during the run)
 
+## Important!
+Whenever you want to run programs from this repository, first you have to activate the anaconda environment you created using the command in terminal:
+```bash
+conda activate deeplearning
+```
+You can deactivate the environment when you are done using the command:
+```bash
+conda deactivate
+```
 ## Getting started
 
 After installation, you can refer to the example project to see how the code is used (in folders `example_testing` and `example_training`). The example project is to classify images from the CIFAR-10 dataset (https://www.cs.toronto.edu/~kriz/cifar.html for a reference on the data set and the researchers who developed it). The example project uses a convolutional neural network with a set of ResNet layers at the end of it to classify images. There is a trained model in the example_testing folder which can be used as a baseline (it doesn't work very well). The files in the example project are meant to act as a template for a new project. Below I describe how to develop components for the example project, but this process is the same for a new project as well.
@@ -187,8 +196,27 @@ info_flow:
 
 Once the configuration file is correctly set up, to train a model run: 
 ```bash
+conda activate deeplearning
 python example_training.py
 ```
+### Viewing the training results of a run
+
+The training results can be viewed any time during training or after. This repository uses tensorboard to log results. When you run:
+```bash
+python example_training.py
+```
+and specify that you want to log results or save models. The program prints out a line to terminal at the beginning of training which looks like:
+```bash
+Logging and Model Saving Directory: <PATH TO DIRECTORY WHERE RESULTS AND MODELS ARE SAVED>
+```
+To view the results, copy the printed out path and open a new terminal. Then run the commands:
+```bash
+conda activate deeplearning
+cd <PATH TO DIRECTORY WHERE RESULTS AND MODELS ARE SAVED>
+tensorboard --logdir=.
+```
+The argument `--logdir=` specifies the directory to look for results in and the `.` means the current directory. So you could also just use the command
+`tensorboard --logdir= <PATH TO DIRECTORY WHERE RESULTS AND MODELS ARE SAVED>`
 
 ### Adding custom loss functions, evaluation metric functions and neural network modules
 
