@@ -81,7 +81,7 @@ Methods that need to be modified
 
 2. `forward()`: if your new model uses additional inputs and/or processes its inputs differently than the current model class.
 
-3. `classify`: if you need to preprocess test inputs differently than the `Cifar10Classifier` does. This method can have any name (you may want to change it if you the model estimates or predicts a real valued vector instead of performing classification). What this method should do is process test inputs and then feed them through the network to perform classification, estimation or prediction at test time.
+3. `classify()`: if you need to preprocess test inputs differently than the `Cifar10Classifier` does. This method can have any name (you may want to change it if you the model estimates or predicts a real valued vector instead of performing classification). What this method should do is process test inputs and then feed them through the network to perform classification, estimation or prediction at test time.
 
 After the new class has been defined, it needs to be added to the dictionary in the function `get_ref_model_dict` in the same file `example_training/example_models.py`. In the dictionary, the key for the class should be its name as a string. This step is important so that the model can be initialized and loaded using a config file.
 
