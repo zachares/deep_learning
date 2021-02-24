@@ -42,7 +42,7 @@ pip install pyyaml
 ```bash
 mkdir <PATH WHERE YOU WANT TO STORE THE REPOSITORY>
 cd <PATH WHERE YOU WANT TO STORE THE REPOSITORY>
-git clone -b https://github.com/zachares/deeplearning.git
+git clone https://github.com/zachares/deep_learning.git
 cd deep_learning
 pip install -e .
 ```
