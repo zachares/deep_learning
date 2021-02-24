@@ -53,7 +53,7 @@ python example_testing.py
 ```
 `example_testing.py` should run without issue.
 ```bash
-cd example_training
+cd ../example_training
 python example_training.py
 ```
 `example_training.py` should run without issue (but requires user input during the run)
