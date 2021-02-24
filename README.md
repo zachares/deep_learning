@@ -18,7 +18,7 @@ The software creates a development data set when generating the training and val
 
 1. Install anaconda on your computer - https://docs.anaconda.com/anaconda/install/
 
-2. Create a new anaconda environment with python 3.7+
+2. Open a terminal and create a new anaconda environment with python 3.7+
 ```bash
 conda create -n deeplearning python=3.7
 conda activate deeplearning
