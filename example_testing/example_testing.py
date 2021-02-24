@@ -93,7 +93,7 @@ def testing_example():
         else:
             class_acc = torch.cat([class_acc, class_acc_batch], dim = 0)
     
-    print("The classification accuracy of your model was " +
+    print("\nThe classification accuracy of your model was " +
           "{} on the CIFAR-10 train set.".format(class_acc.mean().item()))
 
     # Calculating Test Set Accuracy

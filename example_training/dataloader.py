@@ -67,7 +67,7 @@ class CustomDataset(Dataset):
             path where the csvs are stored etc.
         """
 
-        self.val_ratio = cfg['training_params']['val_ratio']
+        self.val_ratio = cfg['dataloading_params']['val_ratio']
         self.use_dev = cfg['training_params']['use_dev']
         self.val_bool = False
         self.dev_bool = True if self.use_dev else False
@@ -81,13 +81,13 @@ class CustomDataset(Dataset):
          cifar_test_data,
          cifar_test_filenames,
          cifar_test_labels,
-         cifar_label_names) = load_cifar_10_data(cfg['dataset_path'])
+         cifar_label_names) = load_cifar_10_data(cfg['dataloading_params']['dataset_path'])
 
         self.cifar_train_data = cifar_train_data
         self.cifar_train_labels = cifar_train_labels
 
         if idx_dict == None:
-            print("Dataset path: ", cfg['dataset_path'])
+            print("Dataset path: ", cfg['dataloading_params']['dataset_path'])
             print("Starting Train Val Split")
 
             self.idx_dict = {}
@@ -98,7 +98,7 @@ class CustomDataset(Dataset):
 
             self.idx_dict['idx_list'] = range(cifar_train_data.shape[0])
 
-            self.dev_ratio = (cfg['training_params']['dev_num']
+            self.dev_ratio = (cfg['dataloading_params']['dev_num']
                               / len(self.idx_dict['idx_list']))
 
             for idx in self.idx_dict['idx_list']:
@@ -120,8 +120,6 @@ class CustomDataset(Dataset):
 
         else:
             self.idx_dict = idx_dict
-            print("Dataset path: ", 
-                  self.idx_dict['generation_parameters']['dataset_path'])
             self.train_length = len(list(self.idx_dict['train'].keys()))
             self.val_length = len(list(self.idx_dict['val'].keys()))
             self.dev_length = len(list(self.idx_dict['dev'].keys()))

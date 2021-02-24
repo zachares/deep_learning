@@ -106,7 +106,7 @@ def init_and_load_models(ref_model_dict : dict,
             model_dict[model_name].loading_dir = info_flow[model_name]['model_dir']
             model_dict[model_name].loading_epoch = info_flow[model_name]['epoch']
 
-    print("Finished Initialization and Loading\n")
+    print("\nFinished Initialization and Loading")
     return model_dict
 
 class EvalMetricWrapper():
@@ -243,7 +243,6 @@ def init_dataloader(cfg : dict,
     batch_size = cfg['dataloading_params']['batch_size']
     num_workers = cfg['dataloading_params']['num_workers']
     idx_dict_path = cfg['dataloading_params']['idx_dict_path']
-    val_ratio = cfg['training_params']['val_ratio']
 
     #### loading previous val_train split to continue training a model
     if idx_dict_path is not None:
@@ -256,10 +255,6 @@ def init_dataloader(cfg : dict,
 
     # Loading the dataset
     dataset = CustomDataset(cfg, idx_dict = idx_dict)
-
-    if val_ratio == 0:
-        print("No validation set")
-
 
     sampler = SubsetRandomSampler(range(dataset.train_length))
 
