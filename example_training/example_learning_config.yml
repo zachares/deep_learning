@@ -2,16 +2,17 @@
 dataloading_params:
   # the path to where the data set for the project is stored
   dataset_path: "../cifar_10_dataset" 
-  # the percentage of the data set to 
+  # the fraction of the data set to use in the validation set
   val_ratio: 0.05
-  dev_num: 20 # number of datapoints in the development set
+  # the approximate number of data points that should be in the development set
+  dev_num: 20
   # the number of CPU cores to use for loading data
   num_workers: 4
   # the size of the random batches used to train a neural network
   batch_size: 128
   # if you want to use the same decomposition of the data set into validation, training and development
   # sets from a previous run, write the path to the previous idx_dict here, each time a model is trained
-  # and results are logged and or models are saved, the idx_dict used for training is automatically saved
+  # and results are logged and, or models are saved, the idx_dict used for training is automatically saved
   # in the same folder
   idx_dict_path: 
 
@@ -20,14 +21,14 @@ training_params:
   # the random seed used for the run, this is specified to make the training process more repeatable
   seed: 4321
   # All the parameters until the next comment are used as an input to PyTorch's version of the ADAM 
-  # optimizer (please see for an explaination of the arguments https://pytorch.org/docs/stable/optim.html)
+  # optimizer (please see https://pytorch.org/docs/stable/optim.html for an explaination of the parameters)
   regularization_weight: 0.00001
   lrn_rate: 0.0001
   beta1: 0.9
   beta2: 0.99
   # the maximum number of epochs to train a model for
   max_training_epochs: 10000
-  # whether to use the development set for the run (if you want to do debugging)
+  # whether to use the development set for the run (if you want to debug your code)
   use_dev: False
   # whether to use a GPU to train the model, (requires that your computer has a GPU and has CUDA or 
   # some other software installed to interface the GPU with PyTorch code
@@ -42,7 +43,7 @@ logging_params:
   # a lot of models in a short period of time which are slightly different
   run_notes: system_test
 
-# this dictionary is the key to using the software. All the above parameters can be essentially left
+# the info_flow dictionary is the key to using this repository. All the above parameters can be essentially left
 # as they are (except the data set loading and logging paths) for a new project until you get to the 
 # hyperparameter tuning phase. 'info_flow' defines which models will be trained and how. Each key in 
 # info_flow should be the name of the class of a model you want to load and,or train.
@@ -62,7 +63,7 @@ info_flow:
       image_size: [3,32,32]
       encoding_size: [64,1,1]
       num_resnet_layers: 3
-    # a dictionary with the inputs to the model required for a forward path and their origin 
+    # a dictionary with the inputs to the model required for a forward pass and their origin 
     # (i.e. cifar-10 images 'image' are loaded from the data set)
     inputs:
       image: dataset
@@ -84,7 +85,7 @@ info_flow:
       # the name of the evaluation metric in the eval dict (see utils_sl.py)
       MultinomialAccuracy:
         # the name for the evaluation metric when logging
-        logging_name: Classification_Accuracy
+        logging_name: "Cifar-10 Accuracy"
         # the inputs required for the evaluation metric function
         inputs:
           class_logits: Cifar10Classifier
