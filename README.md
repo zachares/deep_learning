@@ -2,7 +2,7 @@
 
 This is a code repository built on top of PyTorch to speed up the development and testing of novel neural network models.
 
-It is not targeted towards a user with little knowledge of deep learning. I developed this repository for my own research because I was tired of writing almost the same code with small differences for new models or to address new problems. Maybe another researcher will find this repository useful as well.
+It is targeted towards a developer with a good working knowledge of deep learning. I developed this repository for my own research because I was tired of writing almost the same code with small differences for new models or to address new problems. Maybe another researcher will find this repository useful as well.
 
 ## How is this repository different from just using PyTorch?
 
