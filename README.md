@@ -2,7 +2,7 @@
 
 This is a code repository built on top of PyTorch to speed up the development and testing of novel neural network models.
 
-It is not targeted towards a user with little knowledge of deep learning. I developed this repository for my own research because I was tired of writing almost the same code with small differences for new models or to address new problems. Maybe another researcher will find this repository useful as well.
+It is targeted towards a developer with a good working knowledge of deep learning. I developed this repository for my own research because I was tired of writing almost the same code with small differences for new models or to address new problems. Maybe another researcher will find this repository useful as well.
 
 ## How is this repository different from just using PyTorch?
 
@@ -18,7 +18,7 @@ The software creates a development data set when generating the training and val
 
 1. Install anaconda on your computer - https://docs.anaconda.com/anaconda/install/
 
-2. Create a new anaconda environment with python 3.7+
+2. Open a terminal and create a new anaconda environment with python 3.7+
 ```bash
 conda create -n deeplearning python=3.7
 conda activate deeplearning
@@ -42,7 +42,7 @@ pip install pyyaml
 ```bash
 mkdir <PATH WHERE YOU WANT TO STORE THE REPOSITORY>
 cd <PATH WHERE YOU WANT TO STORE THE REPOSITORY>
-git clone -b https://github.com/zachares/deeplearning.git
+git clone https://github.com/zachares/deep_learning.git
 cd deep_learning
 pip install -e .
 ```
@@ -53,7 +53,7 @@ python example_testing.py
 ```
 `example_testing.py` should run without issue.
 ```bash
-cd example_training
+cd ../example_training
 python example_training.py
 ```
 `example_training.py` should run without issue (but requires user input during the run)
@@ -81,7 +81,7 @@ Methods that need to be modified
 
 2. `forward()`: if your new model uses additional inputs and/or processes its inputs differently than the current model class.
 
-3. `classify`: if you need to preprocess test inputs differently than the `Cifar10Classifier` does. This method can have any name (you may want to change it if you the model estimates or predicts a real valued vector instead of performing classification). What this method should do is process test inputs and then feed them through the network to perform classification, estimation or prediction at test time.
+3. `classify()`: if you need to preprocess test inputs differently than the `Cifar10Classifier` does. This method can have any name (you may want to change it if you the model estimates or predicts a real valued vector instead of performing classification). What this method should do is process test inputs and then feed them through the network to perform classification, estimation or prediction at test time.
 
 After the new class has been defined, it needs to be added to the dictionary in the function `get_ref_model_dict` in the same file `example_training/example_models.py`. In the dictionary, the key for the class should be its name as a string. This step is important so that the model can be initialized and loaded using a config file.
 
@@ -99,7 +99,7 @@ You want to modify the `__getitem__()` method, so that it loads all the inputs f
 
 Configuration files are used to define a training run. This is useful because if you have your data set and models already defined then training a model is as simple as editing a yml file instead of having to write out an entire program for training, logging and saving models. Unfortunately, training a neural network is a relatively complicated process, so the configuration file has a lot of parameters stored in it. Below, I added the annotated config file `example_learning_config.yml ` which has inline comments on the use of each parameter / component in the config file. I know there are a lot of parameters, but for the most part you will be keeping the parameters the same at the beginning of a new project. The main things that will need to be changed at the beginning of a project are `dataset_path`, `logging_dir` and the dictionary `info_flow`.
 
-```python 
+```yml 
 # the parameters required to define a data loader
 dataloading_params:
   # the path to where the data set for the project is stored
@@ -112,18 +112,20 @@ dataloading_params:
   num_workers: 4
   # the size of the random batches used to train a neural network
   batch_size: 128
-  # if you want to use the same decomposition of the data set into validation, training and development
-  # sets from a previous run, write the path to the previous idx_dict here, each time a model is trained
-  # and results are logged and, or models are saved, the idx_dict used for training is automatically saved
-  # in the same folder
+  # if you want to use the same decomposition of the data set into validation, training
+  # and development sets from a previous run, write the path to the previous idx_dict here,
+  # each time a model is trained and results are logged and, or models are saved, the 
+  # idx_dict used for training is automatically saved in the same folder
   idx_dict_path: 
 
 # the parameters required for training a model
 training_params:
-  # the random seed used for the run, this is specified to make the training process more repeatable
+  # the random seed used for the run, this is specified to make the training process more 
+  # repeatable
   seed: 4321
-  # All the parameters until the next comment are used as an input to PyTorch's version of the ADAM 
-  # optimizer (please see https://pytorch.org/docs/stable/optim.html for an explaination of the parameters)
+  # All the parameters until the next comment are used as an input to PyTorch's version 
+  # of the ADAM optimizer (please see https://pytorch.org/docs/stable/optim.html for an 
+  # explaination of the parameters)
   regularization_weight: 0.00001
   lrn_rate: 0.0001
   beta1: 0.9
@@ -132,8 +134,8 @@ training_params:
   max_training_epochs: 10000
   # whether to use the development set for the run (if you want to debug your code)
   use_dev: False
-  # whether to use a GPU to train the model, (requires that your computer has a GPU and has CUDA or 
-  # some other software installed to interface the GPU with PyTorch code
+  # whether to use a GPU to train the model, (requires that your computer has a GPU and
+  # has CUDA or some other software installed to interface the GPU with PyTorch code
   use_GPU: True
 
 # the parameters required for logging the results of training and saving models
@@ -141,19 +143,21 @@ logging_params:
   # The path to the directory where training results and models will be saved
   # Place your logging dir in a seperate location then your local code repository
   logging_dir: /home/ubuntu/src/example_logging/
-  # a small additional note which is added to the logging directory, I find it useful if I am training
-  # a lot of models in a short period of time which are slightly different
+  # a small additional note which is added to the logging directory, I find it useful 
+  # if I am traininga lot of models in a short period of time which are slightly different
   run_notes: system_test
 
-# the info_flow dictionary is the key to using this repository. All the above parameters can be essentially left
-# as they are (except the data set loading and logging paths) for a new project until you get to the 
-# hyperparameter tuning phase. 'info_flow' defines which models will be trained and how. Each key in 
-# info_flow should be the name of the class of a model you want to load and,or train.
+# the info_flow dictionary is the key to using this repository. All the above parameters 
+# can be essentially left as they are (except the data set loading and logging paths) for a 
+# new project until you get to the hyperparameter tuning phase. 'info_flow' defines which 
+# models will be trained and how. Each key in info_flow should be the name of the class of 
+# a model you want to load and,or train.
 info_flow:
   # a model that you want to load or train
   Cifar10Classifier:
-    # whether you want to train the model (sometimes you want to load a previously trained model, 
-    # but only to get its outputs instead of to train it) 1 = train, otherwise the model will not be trained
+    # whether you want to train the model (sometimes you want to load a previously trained 
+    # model, but only to get its outputs instead of to train it) 1 = train, otherwise the model 
+    # will not be trained
     train: 1
     # the path to the directory where the weights of a trained model are stored (the 'logging_dir' 
     # from a previous run)
