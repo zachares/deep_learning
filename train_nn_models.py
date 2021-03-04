@@ -56,18 +56,15 @@ def train_nn_models(cfg : dict,
                 "saved.[y/n]: ")
     if var == "y":
         logging_flag = False
+        print("Currently Debugging")
+        torch.autograd.set_detect_anomaly(True)
     elif var == "n":
         logging_flag = True
+        print("Logging results of training")
     else:
         raise Exception("Sorry, {} is not a valid input for".format(var)
                          + "determine whether to run in debugging mode")
-
-    if logging_flag:
-        print("Currently Debugging")
-        torch.autograd.set_detect_anomaly(True)
-    else:
-        print("Logging results of training")
-
+        
     var = input("\nTrain models without saving?[y/n]: ")
     if var == "y":
         save_model_flag = False
@@ -82,11 +79,7 @@ def train_nn_models(cfg : dict,
                     " model on the validation set and/or save it?[1,2,...,1000,...,inf]:")
         save_val_interval = int(var)
         print("Validating and saving every ", save_val_interval, " epochs")
-    else:
-        save_val_interval = np.inf
 
-    # Creating directory to save models and results in
-    if logging_flag or save_model_flag:
         t_now = time.time()
         date = datetime.datetime.fromtimestamp(t_now).strftime('%Y%m%d')
 
@@ -122,7 +115,10 @@ def train_nn_models(cfg : dict,
 
         if logging_flag: logger = Logger(run_log_dir)
 
-        print("Logging and Model Saving Directory: ", run_log_dir)
+        print("\nLOGGING AND MODEL SAVING DIRECTORY: ", run_log_dir)
+
+    else:
+        save_val_interval = np.inf
 
     #####################################################
     #### Setting up Trainer instance to train models  ###
@@ -158,7 +154,7 @@ def train_nn_models(cfg : dict,
 
         sl.save_as_yml("learning_params", cfg, save_dir = run_log_dir)
 
-        trainer.save(i_epoch, run_log_dir)
+        if save_model_flag: trainer.save(i_epoch, run_log_dir)
 
     for i_epoch in range(cfg['training_params']['max_training_epochs']):
         current_time = time.time()
