@@ -16,6 +16,8 @@ The software creates a development data set when generating the training and val
 
 ## Installation Instructions
 
+IMPORTANT: this code repository requires CUDA or another GPU-software that is compatible with PyTorch to already be installed on your computer
+
 1. Install anaconda on your computer - https://docs.anaconda.com/anaconda/install/
 
 2. Open a terminal and create a new anaconda environment with python 3.7+
