@@ -186,6 +186,8 @@ def train_nn_models(cfg : dict,
                     logger.log_results(global_cnt, 'train/')
             
             global_cnt += 1
+        
+        if logging_flag: logger.log_means()
 
         ##################
         ### Validation ###
@@ -213,6 +215,7 @@ def train_nn_models(cfg : dict,
             # logging step
             if logging_flag:
                 # to stop double logging of scalar results
+                logger.log_means()
                 logger.logging_dict['scalar'] = {}
                 # logging images from validation run
                 logger.log_results(val_cnt, 'val/', save_image=True)

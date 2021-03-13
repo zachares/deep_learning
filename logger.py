@@ -10,10 +10,16 @@ class Logger():
         Attributes:
             logging_dir: a string of the path to the directory where the
             results will be saved
+
             writer: a SummaryWriter object which saves values to a file
+
             logging_dict: a dictionary where the training results for
             each iteration are stored until they are saved in the
             SummaryWriter
+
+            mean_dict: a dictionary where all the scalar metrics of training
+            are stored such that the average metric over an entire epoch
+            of training / data set can be calculated
     """
     def __init__(self, logging_dir : str):
         """ Inits a Logger Instance """
@@ -23,6 +29,8 @@ class Logger():
         self.logging_dict = {}
         self.logging_dict['scalar'] = {}
         self.logging_dict['image'] = {}
+        self.mean_dict = {}
+        self.mean_dict['scalar'] = {}
     
     def log_results(self,
                     iteration : int,
@@ -51,13 +59,33 @@ class Logger():
 
     def log_scalars(self):
         """ Saves all scalar training results currently in the attribute 
-            logging_dict
+            logging_dict and stores the current value for each scalar in
+            a list in a seperate dictionary
         """
         for key in self.logging_dict['scalar'].keys():
+            scalar = self.logging_dict['scalar'][key]
             # print(key, logging_dict['scalar'][key])
             self.writer.add_scalar(self.label + key, 
-                                   self.logging_dict['scalar'][key], 
+                                   scalar, 
                                    self.iteration)
+            
+            if key in self.mean_dict['scalar'].keys():
+                self.mean_dict['scalar'][key].append(scalar)
+            else:
+                self.mean_dict['scalar'][key] = [scalar]
+
+    def log_means(self):
+        """ Saves the mean value of all scalar metrics that are stored
+            in the mean_dict. See log_scalars method to see how scalars
+            are stored in mean_dict.
+        """
+        for key in self.mean_dict['scalar'].keys():
+            # print(key, logging_dict['scalar'][key])
+            self.writer.add_scalar(self.label + key + "_mean", 
+                                   np.mean(self.mean_dict['scalar'][key]), 
+                                   self.iteration)
+        
+        self.mean_dict['scalar'] = {}
 
     def log_images2D(self):
         """ Saves all 2D images from training results currently in the 

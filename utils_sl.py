@@ -215,7 +215,7 @@ def np_dict2torch_dict(dict_np : Dict[str, np.ndarray]) -> Dict[str, torch.Tenso
     """
     dict_torch = dict()
     for k, v in dict_np.items():
-        if k == "padding_mask":
+        if "padding_mask" in k:
             dict_torch[k] = torch.from_numpy(v).bool()
         elif k[-3:] == "idx":
             dict_torch[k] = torch.from_numpy(v).long()                
