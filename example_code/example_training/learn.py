@@ -11,7 +11,7 @@ from deep_learning.losses import LossFactory
 from deep_learning.metrics import EvalMetricFactory
 from deep_learning.models_manager.model_utils import init_and_load_models
 from deep_learning.train_nn_models import train_nn_models
-from example_models import ModelFactory
+from gnn_models import ModelFactory
 from training_utils import ProjectLossFactory, ProjectEvalMetricFactory
 
 

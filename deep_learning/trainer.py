@@ -59,7 +59,10 @@ class Trainer(object):
         self.info_flow = info_flow
         self.device = device
         self.train_steps = 0
-        self.max_steps = 1
+        self.update_cadence = (
+            1 if 'update_cadence' not in train_dict.keys()
+            else train_dict['update_cadence']
+        )
 
         # Setting up optimizer for models
         self.opt_dict = {}
@@ -87,24 +90,25 @@ class Trainer(object):
                 which are the input arguments for the models during the
                 forward pass
         """
-        for key in self.model_dict.keys():
-            # checking to see if the info_flow attribute specifies to
-            # train the model
-            if self.info_flow[key]["train"] == 1:
-                self.model_dict[key].train()
-            else:
-                self.model_dict[key].eval()
+        with torch.enable_grad():
+            for key in self.model_dict.keys():
+                # checking to see if the info_flow attribute specifies to
+                # train the model
+                if self.info_flow[key]["train"] == 1:
+                    self.model_dict[key].train()
+                else:
+                    self.model_dict[key].eval()
 
-        loss = self.forward_pass(sample_batched)
-        # calculating gradient
-        loss.backward()
-        self.train_steps += 1
-        # updating model weights
-        if self.train_steps == self.max_steps:
-            for key in self.opt_dict.keys():
-                self.opt_dict[key].step()
-                self.opt_dict[key].zero_grad()
-            self.train_steps = 0
+            loss = self.forward_pass(sample_batched)
+            # calculating gradient
+            loss.backward()
+            self.train_steps += 1
+            # updating model weights
+            if self.train_steps == self.update_cadence:
+                for key in self.opt_dict.keys():
+                    self.opt_dict[key].step()
+                    self.opt_dict[key].zero_grad()
+                self.train_steps = 0
 
 
     def eval(self, sample_batched : Dict[str, torch.Tensor]):
@@ -164,42 +168,35 @@ class Trainer(object):
                     raise LookupError("Required Model Input {} has not been calculated by {}".format(input_key, input_source))
 
             # performing forward pass through actual model
-            if self.info_flow[key]["train"] == 1:
-                with torch.enable_grad():
-                    model_outputs[key] = self.model_dict[key](model_inputs[key])
-            else:
-                with torch.no_grad():
-                    model_outputs[key] = self.model_dict[key](model_inputs[key])
+            model_outputs[key] = self.model_dict[key](model_inputs[key])
             # Calculating and storing loss values
             for loss_name in self.info_flow[key]['losses'].keys():
+                loss_function_name = loss_name.split(",")[0]
                 loss_args = self.info_flow[key]['losses'][loss_name]
-
                 input_list = []
                 for i_name, i_source in loss_args['inputs'].items():
                     input_list.append(model_outputs[i_source][i_name])
-                log_name = loss_args['logging_name']
-                loss_function = self.loss_dict[loss_name]
-                loss_weight = loss_args['weight']
+                loss_function = self.loss_dict[loss_function_name]
                 loss += loss_function(
                     tuple(input_list),
-                    loss_weight,
+                    loss_args['weight'],
                     self.log_dict,
-                    "{}/{}".format(key, log_name)
+                    loss_args['logging_name']
                 )
 
             # Calculating and storing eval values
             if 'evals' in self.info_flow[key].keys():
-                for eval_name  in self.info_flow[key]['evals'].keys():
+                for eval_name in self.info_flow[key]['evals'].keys():
+                    metric_name = eval_name.split(',')[0]
                     eval_args = self.info_flow[key]['evals'][eval_name]
                     input_list = []
                     for i_name, i_source in eval_args['inputs'].items():
                         input_list.append(model_outputs[i_source][i_name])
-                    log_name = eval_args['logging_name']
-                    eval_function = self.eval_dict[eval_name]
+                    eval_function = self.eval_dict[metric_name]
                     eval_function(
                         tuple(input_list),
                         self.log_dict,
-                        "{}/{}".format(key, log_name)
+                        eval_args['logging_name']
                     )
         return loss
 
@@ -216,11 +213,8 @@ class Trainer(object):
         """
         #saving each model_module's state dictionary and model dictionary
         for key, model in self.model_dict.items():
-            model_dict = {
-                key: model,
-            }
-            torch.save(model_dict,
-                       "{}{}_{}.pkl".format(model_dir, key, str(epoch_num).zfill(6)))
-
-            print("Saving model {} to {}{}_{}.pkl".format(key, model_dir, key, str(epoch_num).zfill(6)))
+            model_dict = {key: model}
+            filename = f"{model_dir}{key}_{str(epoch_num).zfill(6)}.pkl"
+            torch.save(model_dict, filename)
+            print(f"Saving model {key} to {filename}")
             model.save(epoch_num, model_dir)
