@@ -1,8 +1,0 @@
-README.md
-setup.cfg
-setup.py
-deep_learning.egg-info/PKG-INFO
-deep_learning.egg-info/SOURCES.txt
-deep_learning.egg-info/dependency_links.txt
-deep_learning.egg-info/requires.txt
-deep_learning.egg-info/top_level.txt

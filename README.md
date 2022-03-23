@@ -20,8 +20,16 @@ IMPORTANT: this code repository requires CUDA or another GPU-software that is co
 
 1. Create a virtual environment using anaconda or virtualenv with python 3.8+
 
-2. Install the following python packages - matplotlib, numpy, pyyaml, tensorboard, tensorboardX,
-torch, torch_geometric
+2. Install the following python packages 
+```bash
+matplotlib
+numpy
+pyyaml
+tensorboard
+tensorboardX
+torch 
+torch-geometric
+```
 
 3. Insall the `deeplearning` repository
 ```bash
