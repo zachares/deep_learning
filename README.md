@@ -28,7 +28,7 @@ pyyaml
 tensorboard
 tensorboardX
 torch 
-torch_geometric
+torch-geometric
 ```
 
 3. Insall the `deeplearning` repository
