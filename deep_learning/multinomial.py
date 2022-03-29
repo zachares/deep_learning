@@ -56,7 +56,7 @@ def probs2inputs(probs : torch.Tensor) -> Tuple[torch.Tensor]:
     """
     num_size_dims = len(list(probs.size()))
 
-    if num_size_dims == 2:
+    if num_size_dims <= 2:
         logprobs = torch.log(probs)
     else:
         raise ValueError("estimates tensor size invalid with number"

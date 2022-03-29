@@ -55,7 +55,7 @@ class ModuleWrapper(nn.Module):
     def load(self, epoch_num : int, model_dir : str):
         """ Loads all the weights in the module from a directory """
         ckpt_path = '{}_{}'.format(model_dir + self.model_name, str(epoch_num).zfill(6))
-        ckpt = torch.load(ckpt_path)
+        ckpt = torch.load(ckpt_path, map_location=self.device)
         self.model.load_state_dict(ckpt)
         print("Loaded Model to: ", ckpt_path)
 

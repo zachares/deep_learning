@@ -5,6 +5,7 @@ import os
 import pickle
 import time
 import torch
+from torch_geometric.data import Batch as GraphBatch
 from tqdm import tqdm
 from typing import Dict
 from types import FunctionType
@@ -17,8 +18,8 @@ from deep_learning.trainer import Trainer
 # TODO git hash to know the state of the code when experiments are run
 def save_as_yml(name : str, dictionary : dict, save_dir : str):
     """ Saves a dictionary as a yaml file """
-    print("Saving ", name, " to: ", save_dir + name + ".yml")
-    with open(save_dir + name + ".yml", 'w') as ymlfile2:
+    print("Saving ", name, " to: ", save_dir + name + ".yaml")
+    with open(save_dir + name + ".yaml", 'w') as ymlfile2:
         yaml.dump(dictionary, ymlfile2)
 
 
@@ -169,10 +170,13 @@ def train_nn_models(
             data_loader.dataset.idx_dict,
             save_dir = run_log_dir
         )
-        save_as_yml("learning_params", cfg, save_dir = run_log_dir)
+        save_as_yml("metadata", cfg, save_dir=run_log_dir)
         if save_model_flag:
             trainer.save(i_epoch, run_log_dir)
 
+    best_val_metric = {}
+    for model_key in model_dict.keys():
+        best_val_metric[model_key] = np.inf
     for i_epoch in range(cfg['training_params']['max_training_epochs']):
         current_time = time.time()
 
@@ -187,6 +191,8 @@ def train_nn_models(
         data_loader.dataset.val_bool = False
         data_loader.sampler.indices = range(len(data_loader.dataset))
         i_iter = 0
+        num_nodes = 0
+        graphs = []
         with tqdm(data_loader, unit=" batch") as tepoch:
             for sample_batched in tepoch:
                 tepoch.set_description(f"Epoch {i_epoch}")
@@ -194,8 +200,15 @@ def train_nn_models(
                 sample_batched['epoch'] = torch.from_numpy(np.array([[i_epoch]])).float()
                 sample_batched['iteration'] = torch.from_numpy(np.array([[i_iter]])).float()
                 if type(sample_batched) != dict:
-                    sample_batched = sample_batched.to_dict()
-                trainer.train(sample_batched)
+                    num_nodes += sample_batched.num_nodes
+                    if num_nodes > 25000:
+                        trainer.train(GraphBatch.from_data_list(graphs).to_dict())
+                        graphs = sample_batched.to_data_list()
+                        num_nodes = sample_batched.num_nodes
+                    else:
+                        graphs += sample_batched.to_data_list()
+                else:
+                    trainer.train(sample_batched)
                 # logging step
                 if logging_flag:
                     if global_cnt % 50 == 0 or global_cnt == 1:
@@ -232,7 +245,17 @@ def train_nn_models(
                     val_cnt += 1
                     i_iter += 1
             # logging step
-            if logging_flag:
+            if logging_flag and save_model_flag:
+                for model_key in model_dict.keys():
+                    checkpointing_metric = cfg["info_flow"][model_key]['checkpointing_metric']
+                    current_best = best_val_metric[model_key]
+                if logger.mean_dict['scalar'][model_key][checkpointing_metric] < current_best:
+                    cfg["info_flow"][model_key]["model_dir"] = run_log_dir
+                    cfg["info_flow"][model_key]["epoch"] = i_epoch + 1
+                    best_val_metric[model_key] = logger.mean_dict['scalar'][model_key][checkpointing_metric]
+                    save_as_yml("metadata", cfg, save_dir=run_log_dir)
+                    trainer.save(i_epoch + 1, run_log_dir)
+
                 logger.log_means()
                 logger.logging_dict['scalar'] = {}
                 logger.log_results(val_cnt, 'val/', save_image=True)

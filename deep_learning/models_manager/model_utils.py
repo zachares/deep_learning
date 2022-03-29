@@ -48,9 +48,8 @@ def init_and_load_models(
             model_dict[model_name].loading_dir = info_flow[model_name]['model_dir']
 
         else:
-            with open(info_flow[model_name]['model_dir'] + 'learning_params.yml', 'r') as ymlfile:
+            with open(info_flow[model_name]['model_dir'] + 'metadata.yaml', 'r') as ymlfile:
                 cfg2 = yaml.safe_load(ymlfile)
-
             model_dict[model_name] = ref_model_dict[model_name].value(
                 model_name=model_name,
                 init_args=cfg2['info_flow'][model_name]['init_args'],
