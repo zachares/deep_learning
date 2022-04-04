@@ -41,13 +41,13 @@ def init_dataloader(
             a Dataloader instance that will be used to load random batches
             of the dataset during training
     """
-    batch_size = cfg['dataloading_params']['batch_size']
-    num_workers = cfg['dataloading_params']['num_workers']
+    batch_size = cfg['dataset_config']['batch_size']
+    num_workers = cfg['dataset_config']['num_workers']
     sampler = SubsetRandomSampler(range(dataset.train_length))
     # Loading the dataset
     if (
-        'graph_dataset' in cfg['dataloading_params']
-        and cfg['dataloading_params']['graph_dataset'] == 1
+        'graph_dataset' in cfg['dataset_config']
+        and cfg['dataset_config']['graph_dataset'] == 1
     ):
         print("Graph Dataset Created")
         data_loader = GraphLoader(

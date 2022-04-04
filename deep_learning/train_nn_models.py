@@ -211,10 +211,7 @@ def train_nn_models(
                     trainer.train(sample_batched)
                 # logging step
                 if logging_flag:
-                    if global_cnt % 50 == 0 or global_cnt == 1:
-                        logger.log_results(global_cnt, 'train/', save_image=True)
-                    else:
-                        logger.log_results(global_cnt, 'train/')
+                    logger.log_results(global_cnt, 'train/', save_image=True)
                     tepoch.set_postfix(**logger.get_mean_dict())
                 global_cnt += 1
                 i_iter += 1
@@ -240,25 +237,26 @@ def train_nn_models(
                     trainer.eval(sample_batched)
                     # logging step
                     if logging_flag:
-                        logger.log_results(val_cnt, 'val/')
+                        logger.log_results(val_cnt, 'val/', save_image=True)
                         vepoch.set_postfix(**logger.get_mean_dict())
                     val_cnt += 1
                     i_iter += 1
             # logging step
             if logging_flag and save_model_flag:
+                #checkpointing code
                 for model_key in model_dict.keys():
-                    checkpointing_metric = cfg["info_flow"][model_key]['checkpointing_metric']
-                    current_best = best_val_metric[model_key]
-                if logger.mean_dict['scalar'][model_key][checkpointing_metric] < current_best:
-                    cfg["info_flow"][model_key]["model_dir"] = run_log_dir
-                    cfg["info_flow"][model_key]["epoch"] = i_epoch + 1
-                    best_val_metric[model_key] = logger.mean_dict['scalar'][model_key][checkpointing_metric]
-                    save_as_yml("metadata", cfg, save_dir=run_log_dir)
-                    trainer.save(i_epoch + 1, run_log_dir)
-
+                    if 'checkpointing_metric' in cfg["info_flow"][model_key]:
+                        checkpointing_metric = cfg["info_flow"][model_key]['checkpointing_metric']
+                        current_best = best_val_metric[model_key]
+                        current_metric = logger.get_mean_dict()[f"{model_key}_{checkpointing_metric}"]
+                        if current_metric < current_best:
+                            cfg["info_flow"][model_key]["model_dir"] = run_log_dir
+                            cfg["info_flow"][model_key]["epoch"] = i_epoch + 1
+                            best_val_metric[model_key] = current_metric
+                            save_as_yml("metadata", cfg, save_dir=run_log_dir)
+                            trainer.save(i_epoch + 1, run_log_dir)
+            if logging_flag:
                 logger.log_means()
-                logger.logging_dict['scalar'] = {}
-                logger.log_results(val_cnt, 'val/', save_image=True)
         # saving models at specified epoch interval ####
         if save_model_flag and ((i_epoch + 1) % save_val_interval) == 0:
             trainer.save(i_epoch + 1, run_log_dir)

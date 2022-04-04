@@ -181,7 +181,7 @@ class Trainer(object):
                     tuple(input_list),
                     loss_args['weight'],
                     self.log_dict,
-                    loss_args['logging_name']
+                    f"{key}_{loss_args['logging_name']}"
                 )
 
             # Calculating and storing eval values
@@ -196,7 +196,7 @@ class Trainer(object):
                     eval_function(
                         tuple(input_list),
                         self.log_dict,
-                        eval_args['logging_name']
+                        f"{key}_{eval_args['logging_name']}"
                     )
         return loss
 
