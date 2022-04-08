@@ -1,13 +1,22 @@
+import enum
 import torch
-from torch_geometric.nn import GAT
+from torch_geometric.nn import GCN, GraphSAGE, GAT, GIN, PNA
 
 from deep_learning.models_manager.model_wrappers import ModuleWrapper
 
-class GraphAttentionModule(ModuleWrapper):
+class GNNLoader(enum.Enum):
+    gcn = GCN
+    graphsage = GraphSAGE
+    gat = GAT
+    gin = GIN
+    pna = PNA
+
+class BasicGNNModule(ModuleWrapper):
     """ A module wrapper for a GAT network """
     def __init__(
         self,
         model_name: str,
+        gnn_type: str,
         input_size: int,
         hidden_size: int,
         output_size: int,
@@ -16,7 +25,8 @@ class GraphAttentionModule(ModuleWrapper):
         dropout_bool: bool=True,
         device : torch.device=None
     ):
-        super().__init__(model_name + "_graph_attention", device=device)
+        super().__init__(model_name + f"_{gnn_type}", device=device)
+        self.gnn_type = gnn_type
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -26,8 +36,8 @@ class GraphAttentionModule(ModuleWrapper):
 
         self.layer_name_list = []
 
-        self.layer_name_list.append('gat_model_')
-        self.model = GAT(
+        self.layer_name_list.append(f"{gnn_type}_model_")
+        self.model = GNNLoader[gnn_type].value(
             in_channels=self.input_size,
             hidden_channels=self.hidden_size,
             num_layers=self.num_layers,
