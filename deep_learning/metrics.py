@@ -18,6 +18,7 @@ class EvalMetricWrapper():
             generate its key
         """
         measurement = self.metric(*input_tuple)
+        measurement = measurement[torch.nonzero(measurement)]
         logging_dict['scalar'][label] = measurement.mean().item()
 
 
@@ -65,9 +66,10 @@ def binomial_accuracy(logits : torch.Tensor, labels : torch.Tensor) -> torch.Ten
     """ Calculates the accuracy of a binomial distributions parameters
         based on a single sample
     """
+    eps = 1e-6
     probs = torch.sigmoid(logits)
     samples = torch.where(probs > 0.5, torch.ones_like(probs), torch.zeros_like(probs))
-    accuracy = torch.where(samples == labels, torch.ones_like(samples), torch.zeros_like(samples))
+    accuracy = torch.where(samples == labels, 1.0 - eps, eps)
     return accuracy
 
 

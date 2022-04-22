@@ -122,12 +122,10 @@ def inputs2acc(inputs: Tuple[torch.Tensor], samples: torch.Tensor) -> torch.Tens
     """
     probs, logprobs = inputs[0], inputs[1]
     est_idx = probs.max(1)[1]
-
-    return torch.where(
-        samples == est_idx,
-        torch.ones_like(samples),
-        torch.zeros_like(samples)
-    ).float()
+    return (
+        torch.where(samples == est_idx, 1.0, 1e-6).float()
+        * torch.where(samples == -100, 0.0, 1.0).float()
+    )
 
 
 def logits2acc(logits : torch.Tensor, samples : torch.Tensor) -> torch.Tensor:

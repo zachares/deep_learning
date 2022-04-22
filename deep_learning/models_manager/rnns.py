@@ -74,12 +74,13 @@ class TransformerEncoder(ModuleWrapper):
         self,
         model_name : str,
         input_size : int,
+        hidden_size : int,
         num_layers : int,
         dropout_prob : float=0.1,
         dropout_bool : bool=True,
         max_nhead : int=9,
         uc : bool=True,
-        dim_feedforward : int=128,
+
         device : torch.device=None
     ):
         """ Inits a TransformerComparer instance
@@ -91,7 +92,7 @@ class TransformerEncoder(ModuleWrapper):
         self.num_layers = num_layers
         self.dropout_prob = dropout_prob
         self.dropout = dropout_bool
-        self.dim_feedforward = dim_feedforward
+        self.hidden_size = hidden_size
         self.uc = uc
         # print("Dropout Rate: ", self.dropout_prob)
         self.nhead = 0
@@ -112,7 +113,7 @@ class TransformerEncoder(ModuleWrapper):
             layer_list.append(nn.TransformerEncoderLayer(
                 self.input_size,
                 self.nhead,
-                dim_feedforward=self.dim_feedforward)
+                dim_feedforward=self.hidden_size)
             )
             self.layer_name_list.append('trans_dec_' + str(i))
         self.model = nn.ModuleList(layer_list)

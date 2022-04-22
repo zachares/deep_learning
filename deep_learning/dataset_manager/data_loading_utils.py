@@ -43,11 +43,10 @@ def init_dataloader(
     """
     batch_size = cfg['dataset_config']['batch_size']
     num_workers = cfg['dataset_config']['num_workers']
-    sampler = SubsetRandomSampler(range(dataset.train_length))
     # Loading the dataset
     if (
-        'graph_dataset' in cfg['dataset_config']
-        and cfg['dataset_config']['graph_dataset'] == 1
+        'dataloader' in cfg['dataset_config']
+        and cfg['dataset_config']['dataloader'] in ['graph', 'edge']
     ):
         print("Graph Dataset Created")
         data_loader = GraphLoader(
@@ -61,7 +60,6 @@ def init_dataloader(
             dataset,
             batch_size=batch_size,
             num_workers=num_workers,
-            sampler=sampler,
             pin_memory=True
         )
     return data_loader

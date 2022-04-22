@@ -66,6 +66,7 @@ class Trainer(object):
 
         # Setting up optimizer for models
         self.opt_dict = {}
+        self.lrn_rate_schedule = {}
         for key in self.model_dict.keys():
             if self.info_flow[key]["train"] == 1:
                 print("\nTraining " , key, "\n")
@@ -76,6 +77,12 @@ class Trainer(object):
                     betas=(train_dict['beta1'], train_dict['beta2']),
                     weight_decay = train_dict['regularization_weight']
                 )
+                if 'lrn_decay_rate' in train_dict:
+                    inverse_time_decay = lambda step : 1 / (1 + train_dict['lrn_decay_rate'] * step)
+                    self.lrn_rate_schedule[key] = optim.lr_scheduler.LambdaLR(
+                        self.opt_dict[key],
+                        lr_lambda=inverse_time_decay
+                    )
             else:
                 print("\nNot Training ", key, "\n")
 
@@ -108,6 +115,8 @@ class Trainer(object):
                 for key in self.opt_dict.keys():
                     self.opt_dict[key].step()
                     self.opt_dict[key].zero_grad()
+                    if key in self.lrn_rate_schedule:
+                        self.lrn_rate_schedule[key].step()
                 self.train_steps = 0
 
 
@@ -186,18 +195,19 @@ class Trainer(object):
 
             # Calculating and storing eval values
             if 'evals' in self.info_flow[key].keys():
-                for eval_name in self.info_flow[key]['evals'].keys():
-                    metric_name = eval_name.split(',')[0]
-                    eval_args = self.info_flow[key]['evals'][eval_name]
-                    input_list = []
-                    for i_name, i_source in eval_args['inputs'].items():
-                        input_list.append(model_outputs[i_source][i_name])
-                    eval_function = self.eval_dict[metric_name]
-                    eval_function(
-                        tuple(input_list),
-                        self.log_dict,
-                        f"{key}_{eval_args['logging_name']}"
-                    )
+                with torch.no_grad():
+                    for eval_name in self.info_flow[key]['evals'].keys():
+                        metric_name = eval_name.split(',')[0]
+                        eval_args = self.info_flow[key]['evals'][eval_name]
+                        input_list = []
+                        for i_name, i_source in eval_args['inputs'].items():
+                            input_list.append(model_outputs[i_source][i_name])
+                        eval_function = self.eval_dict[metric_name]
+                        eval_function(
+                            tuple(input_list),
+                            self.log_dict,
+                            f"{key}_{eval_args['logging_name']}"
+                        )
         return loss
 
     def save(self, epoch_num : int, model_dir : str):

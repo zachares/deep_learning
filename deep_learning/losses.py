@@ -57,7 +57,6 @@ class LossWrapperEnsemble(LossWrapper):
             ensemble_loss = ensemble_loss[torch.nonzero(ensemble_loss)]
             loss += ensemble_loss.mean()
         logging_dict['scalar'][label] = loss.item() / net_ests.size(0)
-
         return loss
 
 

@@ -23,7 +23,8 @@ class BasicGNNModule(ModuleWrapper):
         num_layers: int,
         dropout_prob: float=0.1,
         dropout_bool: bool=True,
-        device : torch.device=None
+        device : torch.device=None,
+        **kwargs
     ):
         super().__init__(model_name + f"_{gnn_type}", device=device)
         self.gnn_type = gnn_type
@@ -43,6 +44,7 @@ class BasicGNNModule(ModuleWrapper):
             num_layers=self.num_layers,
             out_channels=self.output_size,
             dropout= 0.0 if not self.dropout else self.dropout_prob,
+            **kwargs
         )
 
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:

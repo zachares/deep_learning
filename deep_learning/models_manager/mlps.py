@@ -18,6 +18,7 @@ class FCN(ModuleWrapper):
         batchnorm : bool=True,
         dropout : bool=False,
         dropout_prob : float=0.5,
+        leak_rate: float=0.1,
         uc : bool=False,
         device : torch.device=None
     ):
@@ -34,22 +35,23 @@ class FCN(ModuleWrapper):
         self.nonlinear = nonlinear
         self.dropout = dropout
         self.dropout_prob = dropout_prob
+        self.leak_rate = leak_rate
         self.uc = uc
         layer_list = []
         self.layer_name_list = []
         for i in range(self.num_layers):
             in_size = self.input_size if i == 0 else self.hidden_size
             out_size = self.hidden_size if i != (self.num_layers - 1) else self.output_size
-            self.layer_name_list.append('linear_' + str(i))
-            if dropout:
+            if dropout and i != 0:
                 layer_list.append(nn.Dropout(p=dropout_prob))
                 self.layer_name_list.append('dropout1d_' + str(i))
+            self.layer_name_list.append('linear_' + str(i))
             layer_list.append(nn.Linear(in_size, out_size))
             if i != (self.num_layers - 1) or nonlinear:
                 if batchnorm:
                     layer_list.append(nn.BatchNorm1d(out_size))
                     self.layer_name_list.append('batchnorm1d_' + str(i))
-                layer_list.append(nn.LeakyReLU(0.1, inplace=False))
+                layer_list.append(nn.LeakyReLU(self.leak_rate, inplace=False))
                 self.layer_name_list.append('leaky_relu_' + str(i))
         self.model = nn.ModuleList(layer_list)
 

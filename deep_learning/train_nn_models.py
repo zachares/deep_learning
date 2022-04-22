@@ -200,13 +200,16 @@ def train_nn_models(
                 sample_batched['epoch'] = torch.from_numpy(np.array([[i_epoch]])).float()
                 sample_batched['iteration'] = torch.from_numpy(np.array([[i_iter]])).float()
                 if type(sample_batched) != dict:
-                    num_nodes += sample_batched.num_nodes
-                    if num_nodes > 25000:
-                        trainer.train(GraphBatch.from_data_list(graphs).to_dict())
-                        graphs = sample_batched.to_data_list()
-                        num_nodes = sample_batched.num_nodes
+                    if cfg['dataset_config']['max_batch_size']:
+                        num_nodes += sample_batched.num_nodes
+                        if num_nodes > cfg['dataset_config']['max_graph_size']:
+                            trainer.train(GraphBatch.from_data_list(graphs).to_dict())
+                            graphs = sample_batched.to_data_list()
+                            num_nodes = sample_batched.num_nodes
+                        else:
+                            graphs += sample_batched.to_data_list()
                     else:
-                        graphs += sample_batched.to_data_list()
+                        trainer.train(sample_batched.to_dict())
                 else:
                     trainer.train(sample_batched)
                 # logging step
