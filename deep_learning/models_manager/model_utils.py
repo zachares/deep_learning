@@ -57,10 +57,10 @@ def init_and_load_models(
             )
             model_dict[model_name].set_device(device)
             model_dict[model_name].load(
-                epoch_num=info_flow[model_name]['epoch'],
+                epoch_num=cfg2['info_flow'][model_name]['epoch'],
                 model_dir=info_flow[model_name]['model_dir']
             )
             model_dict[model_name].loading_dir = info_flow[model_name]['model_dir']
-            model_dict[model_name].loading_epoch = info_flow[model_name]['epoch']
+            model_dict[model_name].loading_epoch = cfg2['info_flow'][model_name]['epoch']
     print("\nFinished Initialization and Loading")
     return model_dict

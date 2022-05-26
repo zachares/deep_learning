@@ -210,8 +210,11 @@ def train_nn_models(
                             graphs += sample_batched.to_data_list()
                     else:
                         trainer.train(sample_batched.to_dict())
+
                 else:
                     trainer.train(sample_batched)
+
+
                 # logging step
                 if logging_flag:
                     logger.log_results(global_cnt, 'train/', save_image=True)

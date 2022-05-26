@@ -12,7 +12,7 @@ class GNNLoader(enum.Enum):
     pna = PNA
 
 class BasicGNNModule(ModuleWrapper):
-    """ A module wrapper for a GAT network """
+    """ A module wrapper for a basic messaging passing neural networks """
     def __init__(
         self,
         model_name: str,

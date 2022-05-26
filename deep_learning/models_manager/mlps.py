@@ -79,6 +79,8 @@ class ResNetFCN(ModelWrapper):
         num_layers : int,
         dropout : bool=True,
         dropout_prob : float=0.5,
+        batchnorm: bool = True,
+        leak_rate: float = 0.1,
         uc : bool=False,
         device : torch.device=None
     ):
@@ -89,6 +91,8 @@ class ResNetFCN(ModelWrapper):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.num_layers = num_layers
+        self.batchnorm = batchnorm
+        self.leak_rate = leak_rate
 
         for i in range(self.num_layers):
             key = "{}_reslayer_{}".format(model_name,str(i + 1).zfill(4))
@@ -102,9 +106,10 @@ class ResNetFCN(ModelWrapper):
                 output_size=out_size,
                 num_layers=1,
                 nonlinear=nonlinear,
-                batchnorm=False,
+                batchnorm=self.batchnorm,
                 dropout=dropout,
                 dropout_prob=dropout_prob,
+                leak_rate=self.leak_rate,
                 uc=uc,
                 device=self.device
             ).to(self.device)
@@ -112,10 +117,8 @@ class ResNetFCN(ModelWrapper):
         """ Forward pass through the model """
         for key, model in self._modules.items():
             i = int(key[-4:]) - 1
-            if i == 0 and self.num_layers == 1:
+            if i == 0:
                 output = model(x)
-            elif i == 0 and self.num_layers != 1:
-                output = model(x) + x
                 residual = output.clone()
             elif i == len(self._modules.keys()) - 1:
                 output = model(output)
