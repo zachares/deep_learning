@@ -86,6 +86,7 @@ def train_nn_models(
     #####################################################
     #### Setting up Trainer instance to train models  ###
     #####################################################
+    assert (logging_flag and save_model_flag) or not save_model_flag
     i_epoch = 0
     prev_time = time.time()
     logger = Logger(logging_flag)
@@ -172,11 +173,11 @@ def train_nn_models(
                 trainer.eval(sample_batched)
                 logger.log_scalars()
                 vepoch.set_postfix(**logger.get_mean_dict())
-        logger.log_means()
         if save_model_flag:
             for model_key in model_dict.keys():
                 checkpointing_metric = cfg["info_flow"][model_key]['checkpointing_metric']
                 current_best = best_val_metric[model_key]
+                import pdb;pdb.set_trace()
                 current_metric = logger.get_mean_dict()[f"{model_key}_{checkpointing_metric}"]
                 if current_metric < current_best:
                     print(f"Checkpoint model {model_key}")
@@ -185,3 +186,4 @@ def train_nn_models(
                     best_val_metric[model_key] = current_metric
                     save_as_yml("metadata", cfg, save_dir=run_log_dir)
                     trainer.save(i_epoch + 1, run_log_dir)
+        logger.log_means()
