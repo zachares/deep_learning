@@ -177,7 +177,6 @@ def train_nn_models(
             for model_key in model_dict.keys():
                 checkpointing_metric = cfg["info_flow"][model_key]['checkpointing_metric']
                 current_best = best_val_metric[model_key]
-                import pdb;pdb.set_trace()
                 current_metric = logger.get_mean_dict()[f"{model_key}_{checkpointing_metric}"]
                 if current_metric < current_best:
                     print(f"Checkpoint model {model_key}")
