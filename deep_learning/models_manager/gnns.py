@@ -9,7 +9,6 @@ class GNNLoader(enum.Enum):
     graphsage = GraphSAGE
     gat = GAT
     gin = GIN
-    pna = PNA
 
 class BasicGNNModule(ModuleWrapper):
     """ A module wrapper for a basic messaging passing neural networks """

@@ -174,7 +174,7 @@ class Trainer(object):
                 if input_key in model_outputs[input_source].keys():
                     model_inputs[key][input_key] = model_outputs[input_source][input_key]
                 else:
-                    raise LookupError("Required Model Input {} has not been calculated by {}".format(input_key, input_source))
+                    raise LookupError(f"Required model input {input_key} has not been returned by {input_source}")
 
             # performing forward pass through actual model
             model_outputs[key] = self.model_dict[key](model_inputs[key])
