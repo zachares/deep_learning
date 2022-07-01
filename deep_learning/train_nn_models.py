@@ -132,7 +132,7 @@ def train_nn_models(
             prev_time = time.time()
         print('Training epoch #{}...'.format(i_epoch))
         # Setting the dataloader to load from the training set
-        data_loader.dataset.val_bool = False
+        data_loader.dataset.set_idx = 0
         data_loader.sampler.indices = range(len(data_loader.dataset))
         logger.label = "train"
         num_nodes = 0
@@ -163,7 +163,7 @@ def train_nn_models(
         # performed at the end of each epoch
         print("Calculating validation results after #{} epochs".format(i_epoch))
         # setting dataloader to load from the validation set
-        data_loader.dataset.val_bool = True
+        data_loader.dataset.set_idx = 1
         data_loader.sampler.indices = range(len(data_loader.dataset))
         logger.label = "val"
         with tqdm(data_loader, unit=" batch") as vepoch:
